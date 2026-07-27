@@ -47,7 +47,6 @@ void Parser::advance() { index += 1; }
 
 auto Parser::parse_float_expression() -> std::unique_ptr<ASTNode> {
   auto token = peek();
-  std::clog << "converting: " << token.value << " to double...\n";
   auto value = std::stod(token.value);
   auto result =
       std::make_unique<FloatLiteralExpression>(value, token.source_location);
@@ -102,7 +101,6 @@ auto Parser::parse_primary_expression() -> std::unique_ptr<ASTNode> {
 
 auto Parser::parse_int_expression() -> std::unique_ptr<ASTNode> {
   auto token = peek();
-  std::clog << "converting: " << token.value << " to Int32...\n";
   auto value = std::stoi(token.value);
   auto result =
       std::make_unique<IntLiteralExpression>(value, peek().source_location);

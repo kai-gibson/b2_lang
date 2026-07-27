@@ -120,8 +120,6 @@ auto Lexer::parse_symbol() -> Token {
   while (is_symbol_char(current())) advance();
   auto word = data.substr(start, index - start);
 
-  std::cout << "found: " << word << '\n';
-
   if (auto found = SYMBOLS.find(word); found.has_value()) {
     return {*found, word, token_location};
   }
