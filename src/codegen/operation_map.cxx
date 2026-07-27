@@ -53,6 +53,8 @@ auto TypeOperations::apply(TokenType token_type, llvm::Value* lhs,
       return gte(lhs, rhs);
     case TokenType::LessThanEquals:
       return lte(lhs, rhs);
+    case TokenType::Equals:
+      return eq(lhs, rhs);
     default:
       throw std::runtime_error(std::format("Unsupported operation: {}",
                                            token_type_to_str(token_type)));
@@ -90,9 +92,14 @@ auto IntOperations::gte(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* {
   return is_signed ? builder.CreateICmpSGE(lhs, rhs, "gtetmp")
                    : builder.CreateICmpUGE(lhs, rhs, "gtetmp");
 }
+
 auto IntOperations::lte(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* {
   return is_signed ? builder.CreateICmpSLE(lhs, rhs, "gtetmp")
                    : builder.CreateICmpULE(lhs, rhs, "gtetmp");
+}
+
+auto IntOperations::eq(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* {
+  return builder.CreateICmpEQ(lhs, rhs, "eqtmp");
 }
 
 auto FloatOperations::add(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* {
@@ -128,4 +135,8 @@ auto FloatOperations::gte(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* {
 
 auto FloatOperations::lte(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* {
   return builder.CreateFCmpOLE(lhs, rhs, "fletmp");
+}
+
+auto FloatOperations::eq(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* {
+  return builder.CreateFCmpOEQ(lhs, rhs, "fletmp");
 }

@@ -104,6 +104,12 @@ void TypeCheckVisitor::visit(BinaryExpression& expr) {
   if (is_bool_operator(expr.op)) {
     result = Type{.type_id = TypeId::Bool, .identifier = "Bool"};
     expr.resolved_type = result;
+    std::cout << "BOOL TYPE, SETTING BIN_RES_TY: " << rhs.identifier << " "
+              << static_cast<int32_t>(rhs.type_id) << "\n";
+
+    expr.binary_resolved_type = expr.lhs->resolved_type;
+    // Type{.type_id = rhs.type_id, .identifier = rhs.identifier};
+
     return;
   }
 

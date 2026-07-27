@@ -1,6 +1,9 @@
 #include "codegen/code_generation_visitor.h"
 
+#include <llvm/IR/Verifier.h>
+
 #include <fstream>
+#include <iostream>
 
 #include "codegen/operation_map.h"
 #include "compiler.h"
@@ -59,6 +62,9 @@ auto CodegenVisitor::get_llvm_type(Type& type) -> llvm::Type* {
 }
 
 void CodegenVisitor::compile() {
+  if (llvm::verifyModule(*llvm_module, &llvm::errs()))
+    throw std::runtime_error("LLVM IR errors detected. See output");
+
   emit_object_file(*llvm_module, "output.o");
   link("output.o", "output");
 }
@@ -125,7 +131,23 @@ void CodegenVisitor::visit(BinaryExpression& expr) {
     throw std::runtime_error("Couldn't resolve type for binary expression");
   }
 
-  auto builder = build_type_operations(*expr.resolved_type, *llvm_builder);
+  // bool operations need to use type operations of the binary expression type
+
+  std::unique_ptr<TypeOperations> builder;
+
+  if (expr.resolved_type->type_id == TypeId::Bool) {
+    std::cout << "BOOL CONDITION, EXPR TYPE: "
+              << expr.binary_resolved_type->identifier << "\n";
+
+    if (!expr.binary_resolved_type) {
+      throw std::runtime_error(
+          "Couldn't resolve type for boolean binary expression");
+    }
+    builder = build_type_operations(*expr.binary_resolved_type, *llvm_builder);
+  } else {
+    builder = build_type_operations(*expr.resolved_type, *llvm_builder);
+  }
+
   result = builder->apply(expr.op, l, r);
 }
 

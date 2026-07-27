@@ -77,6 +77,7 @@ class ASTNode {
 
   ASTNode(SourceLocation source_location) : source_location(source_location) {}
   std::optional<Type> resolved_type;
+  std::optional<Type> binary_resolved_type;
   SourceLocation source_location;
 };
 

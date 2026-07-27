@@ -8,13 +8,19 @@
 auto precedence(TokenType t) -> int32_t {
   switch (t) {
     case TokenType::Equals:
+    case TokenType::NotEquals:
       return 1;
+    case TokenType::GreaterThan:
+    case TokenType::LessThan:
+    case TokenType::GreaterThanEquals:
+    case TokenType::LessThanEquals:
+      return 2;
     case TokenType::Plus:
     case TokenType::Minus:
-      return 2;
+      return 3;
     case TokenType::Asterisk:
     case TokenType::ForwardSlash:
-      return 3;
+      return 4;
     default:
       return 0;
   }

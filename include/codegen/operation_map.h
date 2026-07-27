@@ -17,6 +17,7 @@ class TypeOperations {
   virtual auto lt(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* = 0;
   virtual auto gte(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* = 0;
   virtual auto lte(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* = 0;
+  virtual auto eq(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* = 0;
 
   auto apply(TokenType token_type, llvm::Value* lhs, llvm::Value* rhs)
       -> llvm::Value*;
@@ -34,6 +35,7 @@ class IntOperations : public TypeOperations {
   auto lt(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* override;
   auto gte(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* override;
   auto lte(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* override;
+  auto eq(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* override;
 
  private:
   llvm::IRBuilder<>& builder;
@@ -51,9 +53,15 @@ class FloatOperations : public TypeOperations {
   auto lt(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* override;
   auto gte(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* override;
   auto lte(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* override;
+  auto eq(llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* override;
 
  private:
   llvm::IRBuilder<>& builder;
+};
+
+class BoolOperations : public TypeOperations {
+ public:
+ private:
 };
 
 auto build_type_operations(Type type, llvm::IRBuilder<>& builder)
