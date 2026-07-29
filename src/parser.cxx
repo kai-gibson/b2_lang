@@ -176,6 +176,8 @@ auto Parser::parse_statement() -> std::unique_ptr<ASTNode> {
       return parse_show_statement();
     case TokenType::Return:
       return parse_return_statement();
+    case TokenType::If:
+      return parse_if_statement();
     default:
       throw ParseError(peek().source_location, "Unexpected statement: {}",
                        token_type_to_str(peek().type));
@@ -215,4 +217,19 @@ auto Parser::parse_return_statement() -> std::unique_ptr<ASTNode> {
 
   return std::make_unique<ReturnStatement>(parse_expression(0),
                                            ret.source_location);
+}
+
+auto Parser::parse_if_statement() -> std::unique_ptr<ASTNode> {
+  auto if_stmt = consume(TokenType::If);
+  auto if_statement = std::make_unique<IfStatement>(if_stmt.source_location);
+
+  if_statement->condition = parse_expression(0);
+
+  while (peek().type != TokenType::End) {
+    if_statement->body.push_back(parse_statement());
+  }
+
+  consume(TokenType::End);
+
+  return std::move(if_statement);
 }

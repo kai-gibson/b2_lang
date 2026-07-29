@@ -5,6 +5,7 @@
 
 #include "compile_error.h"
 #include "lexer.h"
+#include "print_visitor.h"
 
 auto is_int_type(TypeId type_id) -> bool {
   using std::ranges::contains;
@@ -237,4 +238,18 @@ void TypeCheckVisitor::visit(ReturnStatement& stmt) {
 void TypeCheckVisitor::visit(TypeExpression& expr) {
   auto type_id = get_type_id(expr.name);
   result = Type{.type_id = type_id, .identifier = expr.name};
+}
+
+void TypeCheckVisitor::visit(IfStatement& if_stmt) {
+  PrintVisitor print;
+  auto cond = emit(*if_stmt.condition);
+
+  if (cond.type_id != TypeId::Bool) {
+    throw TypeError(if_stmt.condition->source_location,
+                    "If statement condition must be of type Bool");
+  }
+
+  for (const auto& stmt : if_stmt.body) {
+    stmt->accept(*this);
+  }
 }

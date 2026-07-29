@@ -22,12 +22,15 @@ void compile(const std::string& filename, bool output_llvm,
 
   Parser parser(tokens);
 
+  PrintVisitor v;
   auto top = parser.parse_top_level();
+  top->accept(v);
+  std::cout << v.printer.to_string() << '\n';
+
   TypeCheckVisitor type_checker;
 
   top->accept(type_checker);
 
-  PrintVisitor v;
   top->accept(v);
   std::cout << v.printer.to_string() << '\n';
 

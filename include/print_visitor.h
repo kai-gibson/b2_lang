@@ -142,6 +142,15 @@ struct PrintVisitor : public Visitor {
     auto print_node = printer.add_node("TypeExpression");
     printer.add_value(ret.name);
   }
+
+  void visit(IfStatement& ifstmt) override {
+    auto print_node = printer.add_node("IfStatement");
+
+    ifstmt.condition->accept(*this);
+    for (const auto& stmt : ifstmt.body) {
+      stmt->accept(*this);
+    }
+  }
 };
 
 #endif  // PRINT_VISITOR_H

@@ -19,6 +19,7 @@ class TypeCheckVisitor : public Visitor {
   void visit(ReturnStatement& stmt) override;
   void visit(TypeExpression& stmt) override;
   void visit(IntLiteralExpression& stmt) override;
+  void visit(IfStatement& stmt) override;
 
   // helper function to visit leaf nodes
   auto emit(ASTNode& node) -> Type {

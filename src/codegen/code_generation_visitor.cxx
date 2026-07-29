@@ -220,6 +220,8 @@ void CodegenVisitor::visit(FunctionDeclaration& func_declaration) {
   auto* func =
       llvm::Function::Create(func_type, llvm::Function::ExternalLinkage,
                              func_declaration.name, *llvm_module);
+
+  this->current_function = func;
   auto* entry = llvm::BasicBlock::Create(*llvm_context, "entry", func);
   llvm_builder->SetInsertPoint(entry);
 
@@ -241,4 +243,15 @@ void CodegenVisitor::visit(FunctionCallExpression& funccall) {
         std::format("Function {} does not exist", funccall.name));
 
   result = llvm_builder->CreateCall(fn->getFunctionType(), fn, {});
+}
+
+void CodegenVisitor::visit(IfStatement& if_stmt) {
+  auto cond = emit(*if_stmt.condition);
+
+  auto* if_true =
+      llvm::BasicBlock::Create(*llvm_context, "iftrue", current_function);
+
+  for (const auto& stmt : if_stmt.body) {
+    stmt->accept(*this);
+  }
 }
