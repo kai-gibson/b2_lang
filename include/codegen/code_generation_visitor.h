@@ -31,18 +31,19 @@ class CodegenVisitor : public Visitor {
   void visit(ReturnStatement& stmt) override;
   void visit(TypeExpression& stmt) override;
   void visit(IntLiteralExpression& stmt) override;
+  void visit(IfStatement& stmt) override;
 
   auto emit(ASTNode& expr) -> llvm::Value*;
   void compile();
   void output_llvm(const std::string_view filename);
+  auto get_llvm_type(Type& type) -> llvm::Type*;
 
   std::unique_ptr<llvm::LLVMContext> llvm_context;
   std::unique_ptr<llvm::Module> llvm_module;
   std::unique_ptr<llvm::IRBuilder<>> llvm_builder;
 
   std::unordered_map<std::string, llvm::Value*> named_values;
-
-  auto get_llvm_type(Type& type) -> llvm::Type*;
+  llvm::Function* current_function = nullptr;
 
  private:
   llvm::Value* result;

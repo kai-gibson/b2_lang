@@ -31,5 +31,19 @@ target_link_libraries(run_tests PRIVATE
   gmock_main
 )
 
+# Force-keep LLVM's static initializers (e.g. MCJIT/target registration),
+# which Apple's linker otherwise dead-strips since nothing calls into
+# these archives directly. Scoped to just these libs (not -all_load) to
+# avoid pulling in duplicate main() symbols from gtest_main/gmock_main.
+find_library(LLVM_MCJIT_LIB LLVMMCJIT PATHS ${LLVM_LIBRARY_DIRS})
+find_library(LLVM_EXECUTIONENGINE_LIB LLVMExecutionEngine PATHS ${LLVM_LIBRARY_DIRS})
+find_library(LLVM_X86CODEGEN_LIB LLVMX86CodeGen PATHS ${LLVM_LIBRARY_DIRS})
+
+target_link_options(run_tests PRIVATE
+  -Wl,-force_load,${LLVM_MCJIT_LIB}
+  -Wl,-force_load,${LLVM_EXECUTIONENGINE_LIB}
+  -Wl,-force_load,${LLVM_X86CODEGEN_LIB}
+)
+
 include(GoogleTest)
 gtest_discover_tests(run_tests)

@@ -198,4 +198,14 @@ struct IntLiteralExpression : public ASTNode {
   int32_t value;
   void accept(Visitor& v) override;
 };
+
+struct IfStatement : public ASTNode {
+  IfStatement(SourceLocation source_location) : ASTNode(source_location) {}
+
+  std::unique_ptr<ASTNode> condition;
+  std::vector<std::unique_ptr<ASTNode>> body;
+
+  void accept(Visitor& v) override;
+};
+
 #endif  // AST_H

@@ -1,19 +1,17 @@
 #include <gtest/gtest.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/IR/PatternMatch.h>
+#include <llvm/Support/TargetSelect.h>
 
 #include "codegen/code_generation_visitor.h"
 #include "lexer.h"
 #include "parser.h"
 #include "type_check_visitor.h"
 
-auto codegen(std::string_view program) -> CodegenVisitor {
-  std::string program_text = R"(
-  func main()
-    return 1
-  end
-  )";
-
+auto codegen(const std::string& program) -> CodegenVisitor {
   auto tokens =
-      Lexer(FileContents{.name = "test.b", .data = program_text}).tokenise();
+      Lexer(FileContents{.name = "test.b", .data = program}).tokenise();
   auto root = Parser(tokens).parse_top_level();
 
   auto type_checker = TypeCheckVisitor();
@@ -24,11 +22,42 @@ auto codegen(std::string_view program) -> CodegenVisitor {
   return codegen;
 };
 
+auto run(const std::string& program, int64_t& out_result) -> void {
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmPrinter();
+  llvm::InitializeNativeTargetAsmParser();
+
+  auto gen = codegen(program);
+
+  std::string error;
+  llvm::EngineBuilder builder(std::move(gen.llvm_module));
+  builder.setErrorStr(&error);
+
+  llvm::ExecutionEngine* engine = builder.create();
+  ASSERT_NE(engine, nullptr) << "EngineBuilder error: " << error;
+
+  auto* func = engine->FindFunctionNamed("main");
+  auto result = engine->runFunction(func, {});
+
+  out_result = result.IntVal.getSExtValue();
+}
+
+#define RUN(OUTPUT_NAME, PROGRAM) \
+  int64_t OUTPUT_NAME = 0;        \
+  run(PROGRAM, OUTPUT_NAME);
+
+/// captures stdout
+#define RUN_OUTPUT(OUTPUT_NAME, STDOUT_NAME, PROGRAM) \
+  ::testing::internal::CaptureStdout();               \
+  int64_t OUTPUT_NAME = 0;                            \
+  run(PROGRAM, OUTPUT_NAME);                          \
+  std::string STDOUT_NAME = ::testing::internal::GetCapturedStdout();
+
 TEST(CodegenTest, GeneratesSimpleFunction) {
   auto program = R"(
-  func main()
-    return 1
-  end
+    func main()
+      return 1
+    end
   )";
 
   auto gen = codegen(program);
@@ -41,15 +70,26 @@ TEST(CodegenTest, GeneratesVariableDeclaration) {
     func main()
       x = 10
 
+      show x
       return x
     end
   )";
 
-  auto gen = codegen(program);
-  auto func = gen.llvm_module->getFunction("main");
-  ASSERT_TRUE(func->getReturnType()->isIntegerTy(32));
+  RUN(output, program);
+  ASSERT_EQ(output, 10);
+}
 
-  for (const auto& instruction : func->getEntryBlock()) {
-    std::cout << instruction.getName().data() << "\n";
-  }
+TEST(CodegenTest, GeneratesVariableAssignmentSwap) {
+  auto program = R"(
+    func main()
+      x = 123
+      y = 456
+      set x = y
+
+      return x
+    end
+  )";
+
+  RUN(output, program);
+  ASSERT_EQ(output, 456);
 }
