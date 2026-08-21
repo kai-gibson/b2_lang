@@ -53,29 +53,37 @@ struct PrettyPrinter {
 struct PrintVisitor : public Visitor {
   PrettyPrinter printer;
 
-  void print_resolved_type(ASTNode& node) {
-    if (node.resolved_type.has_value()) {
-      auto print_node = printer.add_node("ResolvedType");
-      printer.add_value(node.resolved_type->identifier);
+  // void print_resolved_type(ASTNode& node) {
+  //   if (node.resolved_type.has_value()) {
+  //     auto print_node = printer.add_node("ResolvedType");
+  //     printer.add_value(node.resolved_type->identifier);
+  //   }
+  // }
+  void print_type(const std::optional<Type>& resolved_type,
+                  const std::string& name = "ResolvedType") {
+    if (resolved_type) {
+      auto print_node = printer.add_node(name);
+      printer.add_value(resolved_type->identifier);
     }
   }
 
   void visit(FloatLiteralExpression& expr) override {
     auto print_node = printer.add_node("FloatLiteral");
     printer.add_value(std::to_string(expr.value));
-    print_resolved_type(expr);
+    print_type(expr.resolved_type);
   }
 
   void visit(IntLiteralExpression& expr) override {
     auto print_node = printer.add_node("IntLiteralExpression");
     printer.add_value(std::to_string(expr.value));
-    print_resolved_type(expr);
+    print_type(expr.resolved_type);
   }
 
   void visit(BinaryExpression& expr) override {
     auto print_node = printer.add_node("BinaryExpression");
     printer.add_value(token_type_to_str(expr.op));
-    print_resolved_type(expr);
+    print_type(expr.resolved_type);
+    print_type(expr.operand_type, "OperandType");
 
     expr.lhs->accept(*this);
     expr.rhs->accept(*this);
@@ -84,13 +92,14 @@ struct PrintVisitor : public Visitor {
   void visit(VariableExpression& expr) override {
     auto print_node = printer.add_node("VariableExpression");
     printer.add_string_value(expr.name);
-    print_resolved_type(expr);
+    print_type(expr.resolved_type);
   }
 
   void visit(VariableDeclarationStatement& stmt) override {
     auto print_node = printer.add_node("VariableDeclarationStatement");
     printer.add_string_value(stmt.name);
-    print_resolved_type(stmt);
+    print_type(stmt.declaration_type, "DeclarationType");
+
     stmt.value->accept(*this);
 
     if (stmt.type_identifier) {
@@ -113,8 +122,6 @@ struct PrintVisitor : public Visitor {
     auto print_node = printer.add_node("FunctionDeclaration");
     printer.add_string_value(func.name);
 
-    print_resolved_type(func);
-
     for (const auto& stmt : func.statements) {
       stmt->accept(*this);
     }
@@ -123,7 +130,6 @@ struct PrintVisitor : public Visitor {
   void visit(FunctionCallExpression& call) override {
     auto print_node = printer.add_node("FunctionCall");
     printer.add_string_value(call.name);
-    print_resolved_type(call);
   }
 
   void visit(Program& program) override {
@@ -135,7 +141,7 @@ struct PrintVisitor : public Visitor {
 
   void visit(ReturnStatement& ret) override {
     auto print_node = printer.add_node("ReturnStatement");
-    ret.value->accept(*this);
+    ret.expr->accept(*this);
   }
 
   void visit(TypeExpression& ret) override {

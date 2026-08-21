@@ -1,255 +1,475 @@
 #include "type_check_visitor.h"
 
-#include <algorithm>
-#include <iostream>
+#include <utility>
 
 #include "compile_error.h"
 #include "lexer.h"
-#include "print_visitor.h"
+#include "parser.h"
 
-auto is_int_type(TypeId type_id) -> bool {
-  using std::ranges::contains;
-
-  constexpr std::array int_types = {
-      TypeId::Int8,  TypeId::Int16,  TypeId::Int32,  TypeId::Int64,
-      TypeId::UInt8, TypeId::UInt16, TypeId::UInt32, TypeId::UInt64};
-
-  return contains(int_types, type_id);
+auto is_literal(Type& type) -> bool {
+  switch (type.type_id) {
+    case TypeId::IntLiteral:
+    case TypeId::FloatLiteral:
+      return true;
+    default:
+      return false;
+  }
 }
 
-auto is_float_type(TypeId type_id) -> bool {
-  using std::ranges::contains;
-
-  constexpr std::array float_types = {TypeId::Float32, TypeId::Float64};
-
-  return contains(float_types, type_id);
+auto is_integer(Type& type) -> bool {
+  switch (type.type_id) {
+    case TypeId::Int8:
+    case TypeId::Int16:
+    case TypeId::Int32:
+    case TypeId::Int64:
+    case TypeId::UInt8:
+    case TypeId::UInt16:
+    case TypeId::UInt32:
+    case TypeId::UInt64:
+      return true;
+    default:
+      return false;
+  }
 }
 
-auto resolve_literal_type(std::optional<Type> explicit_type, Type& literal,
-                          SourceLocation& source_location) -> Type {
-  if (literal.type_id == TypeId::IntLiteral) {
-    if (!explicit_type)
+auto int_is_in_range(int64_t value, Type& expected) -> bool {
+  switch (expected.type_id) {
+    case TypeId::Int8:
+      return value >= INT8_MIN && value <= INT8_MAX;
+    case TypeId::Int16:
+      return value >= INT16_MIN && value <= INT16_MAX;
+    case TypeId::Int32:
+      return value >= INT32_MIN && value <= INT32_MAX;
+    case TypeId::Int64:
+      return value >= INT64_MIN && value <= INT64_MAX;
+    case TypeId::UInt8:
+      return value >= 0 && value <= UINT8_MAX;
+    case TypeId::UInt16:
+      return value >= 0 && value <= UINT16_MAX;
+    case TypeId::UInt32:
+      return value >= 0 && std::cmp_less_equal(value, UINT32_MAX);
+    case TypeId::UInt64:
+      return value >= 0;
+    case TypeId::Float32: {
+      constexpr int64_t MAX_F32_VALUE = 1LL << 24;
+      return value >= -MAX_F32_VALUE && value <= MAX_F32_VALUE;
+    }
+    case TypeId::Float64: {
+      constexpr int64_t MAX_F64_VALUE = 1LL << 53;
+      return value >= -MAX_F64_VALUE && value <= MAX_F64_VALUE;
+    }
+    default:
+      return false;
+  }
+}
+
+auto is_float(Type& type) -> bool {
+  switch (type.type_id) {
+    case TypeId::Float32:
+    case TypeId::Float64:
+      return true;
+    default:
+      return false;
+  }
+}
+
+auto float_is_in_range(double value, Type& expected) -> bool {
+  switch (expected.type_id) {
+    case TypeId::Float32: {
+      constexpr auto MAX_F32_VALUE = static_cast<double>(1LL << 24);
+      return value >= -MAX_F32_VALUE && value <= MAX_F32_VALUE;
+    }
+    case TypeId::Float64: {
+      constexpr auto MAX_F64_VALUE = static_cast<double>(1LL << 53);
+      return value >= -MAX_F64_VALUE && value <= MAX_F64_VALUE;
+    }
+    default:
+      return false;
+  }
+}
+
+auto get_literal_default(Type& type, SourceLocation loc) -> Type {
+  switch (type.type_id) {
+    case TypeId::IntLiteral:
       return Type{.type_id = TypeId::Int32, .identifier = "Int32"};
-
-    if (!is_int_type(explicit_type->type_id)) {
-      throw TypeError(source_location, "Can't coerce int literal to type: {}",
-                      explicit_type->identifier);
-    }
-
-    return *explicit_type;
-  }
-
-  if (literal.type_id == TypeId::FloatLiteral) {
-    if (!explicit_type)
+    case TypeId::FloatLiteral:
       return Type{.type_id = TypeId::Float64, .identifier = "Float64"};
-
-    if (!is_float_type(explicit_type->type_id)) {
-      throw TypeError(source_location, "Can't coerce float literal to type: {}",
-                      explicit_type->identifier);
-    }
-
-    return *explicit_type;
+    default:
+      throw TypeError(
+          loc, "Can't give a default literal value for non-literal type \"{}\"",
+          type.identifier);
   }
-
-  throw std::runtime_error("Shouldn't have reached here.");
 }
 
-void TypeCheckVisitor::visit(BinaryExpression& expr) {
-  auto lhs = emit(*expr.lhs);
-  auto rhs = emit(*expr.rhs);
+auto TypeCheckVisitor::infer_expr_top_level(ASTNode* node) -> Type {
+  auto resolved_type = infer_expr(node);
 
-  bool lhs_literal =
-      lhs.type_id == TypeId::IntLiteral || lhs.type_id == TypeId::FloatLiteral;
-  bool rhs_literal =
-      rhs.type_id == TypeId::IntLiteral || rhs.type_id == TypeId::FloatLiteral;
-
-  // one is a literal, one is concrete — resolve the literal against the
-  // concrete
-  if (lhs_literal != rhs_literal) {
-    if (lhs_literal) {
-      lhs = resolve_literal_type(rhs, lhs, expr.source_location);
-      expr.lhs->resolved_type = lhs;
-    } else {
-      rhs = resolve_literal_type(lhs, rhs, expr.source_location);
-      expr.rhs->resolved_type = rhs;
-    }
+  // if it's a literal, we need to default it and push the type back down
+  if (is_literal(resolved_type)) {
+    resolved_type = get_literal_default(resolved_type, node->source_location);
+    check_expr(node, resolved_type);
   }
 
-  // default to Float64 or Int32
-  if (lhs_literal && rhs_literal) {
-    if (lhs.type_id == TypeId::IntLiteral &&
-        rhs.type_id == TypeId::IntLiteral) {
-      expr.lhs->resolved_type =
-          Type{.type_id = TypeId::Int32, .identifier = "Int32"};
-      expr.rhs->resolved_type = expr.lhs->resolved_type;
+  return resolved_type;
+}
 
-    } else if (lhs.type_id == TypeId::FloatLiteral ||
-               rhs.type_id == TypeId::FloatLiteral) {
-      expr.lhs->resolved_type =
-          Type{.type_id = TypeId::Float64, .identifier = "Float64"};
-      expr.rhs->resolved_type = expr.lhs->resolved_type;
-    } else {
-      throw TypeError(expr.source_location, "Unexpected non-numeric literal");
+void TypeCheckVisitor::visit_statement_var_decl(
+    VariableDeclarationStatement* decl) {
+  auto it = variable_map.find(decl->name);
+
+  if (it != variable_map.end()) {
+    throw TypeError(decl->source_location,
+                    "Attempted re-declaration of variable \"{}\"", decl->name);
+  }
+
+  // if there's a type annotation, drill it down into the value
+  if (decl->type_identifier) {
+    decl->declaration_type = infer_expr(decl->type_identifier.get());
+
+    check_expr(decl->value.get(), *decl->declaration_type);
+  } else {
+    // otherwise infer it
+    decl->declaration_type = infer_expr_top_level(decl->value.get());
+  }
+
+  variable_map[decl->name] = *decl->declaration_type;
+}
+
+void TypeCheckVisitor::visit_statement_if(IfStatement* ifstmt) {
+  auto expected = BOOL_TYPE;
+  check_expr(ifstmt->condition.get(), expected);
+
+  for (auto& stmt : ifstmt->body) {
+    visit_statement_node(stmt.get());
+  }
+}
+
+void TypeCheckVisitor::visit_statement_var_assign(
+    VariableAssignmentStatement* var) {
+  auto it = variable_map.find(var->name);
+
+  if (it == variable_map.end()) {
+    throw TypeError(var->source_location, "Usage of undefined variable \"{}\"",
+                    var->name);
+  }
+
+  auto& var_type = it->second;
+
+  check_expr(var->value.get(), var_type);
+}
+
+void TypeCheckVisitor::visit_statement_program(Program* prog) {
+  for (auto& fn : prog->functions) {
+    visit_statement_node(fn.get());
+    variable_map.clear();  // clear map between function declarations
+  }
+}
+
+void TypeCheckVisitor::visit_statement_fn_decl(FunctionDeclaration* fn) {
+  for (auto& stmt : fn->statements) {
+    visit_statement_node(stmt.get());
+  }
+
+  // all functions return Int32 for now
+  function_map[fn->name] =
+      Type{.type_id = TypeId::Int32, .identifier = "Int32"};
+}
+
+void TypeCheckVisitor::visit_statement_show(ShowStatement* show) {
+  show->expr_type = infer_expr_top_level(show->expr.get());
+}
+
+void TypeCheckVisitor::visit_statement_return(ReturnStatement* ret) {
+  ret->expr_type = infer_expr_top_level(ret->expr.get());
+}
+
+/// Recursive visitor for statements. This is not for expressions.
+void TypeCheckVisitor::visit_statement_node(ASTNode* node) {
+  switch (node->kind()) {
+    case NodeKind::FunctionDeclaration:
+      visit_statement_fn_decl(cast<FunctionDeclaration>(node));
+      break;
+    case NodeKind::Program:
+      visit_statement_program(cast<Program>(node));
+      break;
+    case NodeKind::VariableAssignmentStatement:
+      visit_statement_var_assign(cast<VariableAssignmentStatement>(node));
+      break;
+    case NodeKind::VariableDeclarationStatement:
+      visit_statement_var_decl(cast<VariableDeclarationStatement>(node));
+      break;
+    case NodeKind::ShowStatement:
+      visit_statement_show(cast<ShowStatement>(node));
+      break;
+    case NodeKind::ReturnStatement:
+      visit_statement_return(cast<ReturnStatement>(node));
+      break;
+    case NodeKind::IfStatement:
+      visit_statement_if(cast<IfStatement>(node));
+      break;
+    case NodeKind::FloatLiteralExpression:
+    case NodeKind::BinaryExpression:
+    case NodeKind::VariableExpression:
+    case NodeKind::FunctionCallExpression:
+    case NodeKind::TypeExpression:
+    case NodeKind::IntLiteralExpression:
+      throw TypeError(
+          node->source_location,
+          "visit_statement_node should never visit an expression node");
+  }
+}
+
+void TypeCheckVisitor::check_expr_int_literal(IntLiteralExpression* node,
+                                              Type& expected) {
+  if (is_integer(expected) || is_float(expected)) {
+    if (!int_is_in_range(node->value, expected)) {
+      throw TypeError(
+          node->source_location,
+          "Integer literal ({}) cannot fit in type {} without data loss",
+          node->value, expected.identifier);
+    }
+
+    node->resolved_type = expected;
+  } else {
+    throw TypeError(node->source_location,
+                    "Cannot implicitly convert Integer literal ({}) to type {}",
+                    node->value, expected.identifier);
+  }
+}
+
+void TypeCheckVisitor::check_expr_type_expr(TypeExpression* node,
+                                            Type& expected) {
+  throw TypeError(node->source_location,
+                  "Attempt to check Type expression {} against type {}",
+                  node->name, expected.identifier);
+}
+
+void TypeCheckVisitor::check_expr_func_call(FunctionCallExpression* node,
+                                            Type& expected) {
+  auto it = function_map.find(node->name);
+  if (it == function_map.end()) {
+    throw TypeError(node->source_location, "Call to undefined function \"{}\"",
+                    node->name);
+  }
+
+  if (it->second.type_id != expected.type_id) {
+    throw TypeError(node->source_location,
+                    "Expected {}, Got {} from call to function \"{}\"",
+                    expected.identifier, it->second.identifier, node->name);
+  }
+}
+
+void TypeCheckVisitor::check_expr_var_expr(VariableExpression* node,
+                                           Type& expected) {
+  auto it = variable_map.find(node->name);
+  if (it == variable_map.end()) {
+    throw TypeError(node->source_location, "Usage of undefined variable \"{}\"",
+                    node->name);
+  }
+
+  if (it->second.type_id != expected.type_id) {
+    throw TypeError(node->source_location,
+                    "Expected type {}, got {} from usage of variable \"{}\"",
+                    expected.identifier, it->second.identifier, node->name);
+  }
+
+  node->resolved_type = expected;
+}
+
+void TypeCheckVisitor::check_expr_bin_expr(BinaryExpression* node,
+                                           Type& expected) {
+  // bool operators have a different operand type to resolved type
+  Type left, right;
+  if (is_bool_operator(node->op)) {
+    node->resolved_type = BOOL_TYPE;
+
+    // must infer concrete types since top level doesn't give us context to push
+    // down
+    left = infer_expr_top_level(node->lhs.get());
+    right = infer_expr_top_level(node->rhs.get());
+
+    if (left.type_id != right.type_id) {
+      throw TypeError(node->source_location,
+                      "Left type {} does not match right type {}",
+                      left.identifier, right.identifier);
     }
   } else {
-    std::cout << (int)lhs.type_id << " " << (int)rhs.type_id << "\n";
-    if (lhs.type_id != rhs.type_id) {
+    node->resolved_type = expected;
+
+    check_expr(node->lhs.get(), expected);
+    check_expr(node->rhs.get(), expected);
+  }
+}
+
+void TypeCheckVisitor::check_expr_float_literal(FloatLiteralExpression* node,
+                                                Type& expected) {
+  if (!is_float(expected)) {
+    throw TypeError(node->source_location,
+                    "Float literal ({}) cannot be converted to type {}",
+                    node->value, expected.identifier);
+  }
+
+  if (!float_is_in_range(node->value, expected)) {
+    throw TypeError(
+        node->source_location,
+        "Float literal ({}) cannot fit in type {} without data loss",
+        node->value, expected.identifier);
+  }
+
+  node->resolved_type = expected;
+}
+
+void TypeCheckVisitor::check_expr(ASTNode* node, Type& expected) {
+  switch (node->kind()) {
+    case NodeKind::IntLiteralExpression:
+      check_expr_int_literal(cast<IntLiteralExpression>(node), expected);
+      break;
+    case NodeKind::TypeExpression:
+      check_expr_type_expr(cast<TypeExpression>(node), expected);
+      break;
+    case NodeKind::FunctionCallExpression:
+      check_expr_func_call(cast<FunctionCallExpression>(node), expected);
+      break;
+    case NodeKind::VariableExpression:
+      check_expr_var_expr(cast<VariableExpression>(node), expected);
+      break;
+    case NodeKind::BinaryExpression:
+      check_expr_bin_expr(cast<BinaryExpression>(node), expected);
+      break;
+    case NodeKind::FloatLiteralExpression:
+      check_expr_float_literal(cast<FloatLiteralExpression>(node), expected);
+      break;
+
+    case NodeKind::IfStatement:
+    case NodeKind::ReturnStatement:
+    case NodeKind::ShowStatement:
+    case NodeKind::VariableDeclarationStatement:
+    case NodeKind::VariableAssignmentStatement:
+    case NodeKind::Program:
+    case NodeKind::FunctionDeclaration:
+      throw TypeError(node->source_location,
+                      "Shouldn't ever call check on a statement...");
+  }
+}
+
+auto TypeCheckVisitor::infer_expr_int_literal(IntLiteralExpression* node)
+    -> Type {
+  node->resolved_type =
+      Type{.type_id = TypeId::IntLiteral, .identifier = "IntLiteral"};
+  return *node->resolved_type;
+}
+
+auto TypeCheckVisitor::infer_expr_type_expr(TypeExpression* node) -> Type {
+  if (!is_builtin_type(node->name)) {
+    throw TypeError(node->source_location, "User type {} is invalid",
+                    node->name);
+  }
+
+  return Type{.type_id = get_type_id(node->name), .identifier = node->name};
+}
+
+auto TypeCheckVisitor::infer_expr_func_call(FunctionCallExpression* node)
+    -> Type {
+  auto it = function_map.find(node->name);
+  if (it == function_map.end()) {
+    throw TypeError(node->source_location, "Call to undefined function \"{}\"",
+                    node->name);
+  }
+
+  return it->second;
+}
+
+auto TypeCheckVisitor::infer_expr_var_expr(VariableExpression* node) -> Type {
+  auto it = variable_map.find(node->name);
+  if (it == variable_map.end()) {
+    throw TypeError(node->source_location, "Usage of undefined variable \"{}\"",
+                    node->name);
+  }
+
+  node->resolved_type = it->second;
+  return *node->resolved_type;
+}
+
+auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
+  auto left = infer_expr(node->lhs.get());
+  auto right = infer_expr(node->rhs.get());
+
+  if (is_bool_operator(node->op)) {
+    node->resolved_type = BOOL_TYPE;
+  }
+
+  auto left_is_literal = is_literal(left);
+  auto right_is_literal = is_literal(right);
+
+  if (left_is_literal && right_is_literal) {
+    auto left_is_int = left.type_id == TypeId::IntLiteral;
+    auto right_is_int = right.type_id == TypeId::IntLiteral;
+
+    if (left_is_int && right_is_int) {
+      node->operand_type = INT_LITERAL_TYPE;
+      return INT_LITERAL_TYPE;
+    }
+
+    // if one is a float, default both to float
+    node->operand_type = FLOAT_LITERAL_TYPE;
+    return FLOAT_LITERAL_TYPE;
+  }
+
+  // only one is a literal, the other is concrete so we can infer from context
+  if (left_is_literal != right_is_literal) {
+    Pair pair = left_is_literal ? Pair{.from = left, .to = right}
+                                : Pair{.from = right, .to = left};
+
+    auto it = LITERAL_PROMOTION_MAP.find(pair);
+    if (it == LITERAL_PROMOTION_MAP.end()) {
       throw TypeError(
-          expr.source_location,
-          "Type Error: left ({}) and right ({}) of binary operation: {} do not "
-          "match",
-          lhs.identifier, rhs.identifier, token_type_to_str(expr.op));
+          node->source_location,
+          "Unable to automatically convert literal {} to target type {}",
+          pair.from.identifier, pair.to.identifier);
     }
+
+    node->operand_type = it->second;
   }
 
-  if (is_bool_operator(expr.op)) {
-    result = Type{.type_id = TypeId::Bool, .identifier = "Bool"};
-    expr.resolved_type = result;
-    expr.binary_resolved_type = expr.lhs->resolved_type;
-    // Type{.type_id = rhs.type_id, .identifier = rhs.identifier};
-
-    return;
+  if (left.type_id != right.type_id) {
+    throw TypeError(node->source_location,
+                    "Left type {} does not match right type {}",
+                    left.identifier, right.identifier);
   }
 
-  // infer from the right value
-  result = Type{.type_id = rhs.type_id, .identifier = rhs.identifier};
-  expr.resolved_type = result;
+  if (!node->resolved_type) node->resolved_type = node->operand_type;
+
+  return *node->resolved_type;
 }
 
-void TypeCheckVisitor::visit(FloatLiteralExpression& expr) {
-  result = Type{.type_id = TypeId::FloatLiteral, .identifier = ""};
-  expr.resolved_type = result;
+auto TypeCheckVisitor::infer_expr_float_literal(FloatLiteralExpression* node)
+    -> Type {
+  return Type{.type_id = TypeId::FloatLiteral, .identifier = "FloatLiteral"};
 }
 
-void TypeCheckVisitor::visit(IntLiteralExpression& expr) {
-  result = Type{.type_id = TypeId::IntLiteral, .identifier = ""};
-  expr.resolved_type = result;
-}
+auto TypeCheckVisitor::infer_expr(ASTNode* node) -> Type {
+  switch (node->kind()) {
+    case NodeKind::IntLiteralExpression:
+      return infer_expr_int_literal(cast<IntLiteralExpression>(node));
+    case NodeKind::TypeExpression:
+      return infer_expr_type_expr(cast<TypeExpression>(node));
+    case NodeKind::FunctionCallExpression:
+      return infer_expr_func_call(cast<FunctionCallExpression>(node));
+    case NodeKind::VariableExpression:
+      return infer_expr_var_expr(cast<VariableExpression>(node));
+    case NodeKind::BinaryExpression:
+      return infer_expr_bin_expr(cast<BinaryExpression>(node));
+    case NodeKind::FloatLiteralExpression:
+      return infer_expr_float_literal(cast<FloatLiteralExpression>(node));
 
-void TypeCheckVisitor::visit(VariableExpression& expr) {
-  auto it = variable_map.find(expr.name);
-  if (it == variable_map.end()) {
-    throw TypeError(expr.source_location, "Error: variable: {} not declared",
-                    expr.name);
-  }
-
-  result = it->second;
-  expr.resolved_type = result;
-}
-
-void TypeCheckVisitor::visit(Program& program) {
-  for (const auto& func : program.functions) {
-    func->accept(*this);
-  }
-}
-
-void TypeCheckVisitor::visit(VariableDeclarationStatement& stmt) {
-  std::optional<Type> expected_type;
-
-  if (stmt.type_identifier) {
-    expected_type = emit(*stmt.type_identifier);
-  }
-
-  auto value = emit(*stmt.value);
-
-  if (value.type_id == TypeId::IntLiteral ||
-      value.type_id == TypeId::FloatLiteral) {
-    value = resolve_literal_type(expected_type, value, stmt.source_location);
-    stmt.value->resolved_type = value;
-  }
-
-  if (expected_type && expected_type->type_id != value.type_id) {
-    throw TypeError(stmt.source_location,
-                    "Type Error: variable: {} with type: {} does not match "
-                    "expression type: {}",
-                    stmt.name, expected_type->identifier, value.identifier);
-  }
-
-  // else just infer type from expression
-  result = value;
-  stmt.resolved_type = result;
-
-  // save to symbol map
-  variable_map[stmt.name] = result;
-}
-
-void TypeCheckVisitor::visit(VariableAssignmentStatement& stmt) {
-  auto it = variable_map.find(stmt.name);
-  if (it == variable_map.end()) {
-    throw TypeError(stmt.source_location, "Error: variable: {} not declared",
-                    stmt.name);
-  }
-
-  auto var_type = it->second;
-  auto expr_type = emit(*stmt.value);
-
-  if (expr_type.type_id == TypeId::IntLiteral ||
-      expr_type.type_id == TypeId::FloatLiteral) {
-    expr_type = resolve_literal_type(var_type, expr_type, stmt.source_location);
-    stmt.value->resolved_type = expr_type;
-  }
-
-  if (var_type.type_id != expr_type.type_id) {
-    throw TypeError(stmt.source_location,
-                    "Type Error: cannot assign type \"{}\" to variable \"{}\" "
-                    "of type \"{}\"",
-                    expr_type.identifier, stmt.name, var_type.identifier);
-  }
-}
-
-// no-op
-void TypeCheckVisitor::visit(ShowStatement& stmt) { stmt.expr->accept(*this); }
-
-void TypeCheckVisitor::visit(FunctionDeclaration& func) {
-  // set current function
-  current_function = &func;
-
-  // resolve function return type to Int32 for now
-  func.resolved_type = Type{.type_id = TypeId::Int32, .identifier = "Int32"};
-
-  // scope variable type map to function
-  variable_map.clear();
-  for (const auto& stmt : func.statements) {
-    stmt->accept(*this);
-    if (result.type_id == TypeId::IntLiteral ||
-        result.type_id == TypeId::FloatLiteral) {
-      throw TypeError(stmt->source_location,
-                      "Could not infer type of literal, add a type annotation");
-    }
-  }
-}
-
-void TypeCheckVisitor::visit(FunctionCallExpression& stmt) { (void)stmt; }
-
-void TypeCheckVisitor::visit(ReturnStatement& stmt) {
-  auto value = emit(*stmt.value);
-
-  if (value.type_id == TypeId::IntLiteral ||
-      value.type_id == TypeId::FloatLiteral) {
-    value = resolve_literal_type(this->current_function->resolved_type, value,
-                                 stmt.source_location);
-    stmt.value->resolved_type = value;
-  }
-
-  result = value;
-  stmt.resolved_type = result;
-}
-
-void TypeCheckVisitor::visit(TypeExpression& expr) {
-  auto type_id = get_type_id(expr.name);
-  result = Type{.type_id = type_id, .identifier = expr.name};
-}
-
-void TypeCheckVisitor::visit(IfStatement& if_stmt) {
-  PrintVisitor print;
-  auto cond = emit(*if_stmt.condition);
-
-  if (cond.type_id != TypeId::Bool) {
-    throw TypeError(if_stmt.condition->source_location,
-                    "If statement condition must be of type Bool");
-  }
-
-  for (const auto& stmt : if_stmt.body) {
-    stmt->accept(*this);
+    case NodeKind::IfStatement:
+    case NodeKind::ReturnStatement:
+    case NodeKind::ShowStatement:
+    case NodeKind::VariableDeclarationStatement:
+    case NodeKind::VariableAssignmentStatement:
+    case NodeKind::Program:
+    case NodeKind::FunctionDeclaration:
+      throw TypeError(node->source_location,
+                      "Shouldn't ever call check on a statement...");
   }
 }

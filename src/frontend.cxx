@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "codegen/code_generation_visitor.h"
+// #include "codegen/code_generation_visitor.h"
 #include "file_io.h"
 #include "lexer.h"
 #include "parser.h"
@@ -29,15 +29,15 @@ void compile(const std::string& filename, bool output_llvm,
 
   TypeCheckVisitor type_checker;
 
-  top->accept(type_checker);
+  type_checker.visit_statement_node(top.get());
 
   top->accept(v);
   std::cout << v.printer.to_string() << '\n';
 
-  CodegenVisitor codegen;
-  top->accept(codegen);
+  // CodegenVisitor codegen;
+  // top->accept(codegen);
 
-  if (output_llvm) codegen.output_llvm(filename);
+  // if (output_llvm) codegen.output_llvm(filename);
 
-  codegen.compile();
+  // codegen.compile();
 }

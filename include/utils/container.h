@@ -54,7 +54,7 @@ class StaticSet {
     }
   }
 
-  constexpr auto find(const Value& value) const
+  [[nodiscard]] constexpr auto find(const Value& value) const
       -> std::optional<std::reference_wrapper<const Value>> {
     auto it = std::ranges::lower_bound(items_, value);
 
@@ -62,7 +62,7 @@ class StaticSet {
     return std::nullopt;
   }
 
-  constexpr auto contains(const Value& key) const -> bool {
+  [[nodiscard]] constexpr auto contains(const Value& key) const -> bool {
     return find(key).has_value();
   }
 

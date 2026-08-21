@@ -1,6 +1,6 @@
 declare i32 @printf(ptr, ...)
 
-define i32 @add(i32 %a, i32 %b) {
+define i32 @add(i32 %a, i8 %b) {
 entry:
   %cond = icmp eq i32 %a, %b
   br i1 %cond, label %IfEqual, label %IfUnequal
@@ -51,7 +51,7 @@ for.end:
 
 define i32 @main() {
 entry:
-  %0 = call i32 @loop_square(i32 6)
+  %0 = call i32 @add(i32 6, i8 10)
   %1 = call i32 (ptr, ...) @printf(ptr @fmt, i32 %0)
   ret i32 0
 }

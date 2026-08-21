@@ -42,7 +42,7 @@ target_compile_definitions(project_settings INTERFACE
 )
 
 target_compile_options(project_settings INTERFACE
-    -Wall -Wextra -Wpedantic
+    -Wall -Wextra -Wpedantic -Werror=switch
     -Wno-deprecated-declarations -Wno-unused-parameter
 )
 
@@ -62,7 +62,7 @@ add_library(learning_llvm_lib OBJECT
     src/parser.cxx
     src/ast.cxx
     src/type_check_visitor.cxx
-    src/codegen/code_generation_visitor.cxx
+    #src/codegen/code_generation_visitor.cxx
     src/codegen/operation_map.cxx
 )
 

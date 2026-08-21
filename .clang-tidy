@@ -6,6 +6,7 @@ Checks: >
   -fuchsia-*,
   -llvm-*,
   -bugprone-easily-swappable-parameters
+  -modernize-use-trailing-return-type
 WarningsAsErrors: '*'
 HeaderFilterRegex: '^.*/learning_llvm/(src|include)/.*\.(h|hpp|cxx|cpp)$'
 

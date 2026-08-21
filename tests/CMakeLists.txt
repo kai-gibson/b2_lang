@@ -14,7 +14,9 @@ add_executable(run_tests
   lexer_test.cxx
   utils_test.cxx
   parser_test.cxx
-  codegen_test.cxx
+  type_check_test.cxx
+  node.cxx
+  #codegen_test.cxx
 )
 
 target_include_directories(run_tests PRIVATE
