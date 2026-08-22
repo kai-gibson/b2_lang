@@ -15,7 +15,7 @@ auto codegen(const std::string& program) -> CodegenVisitor {
   auto root = Parser(tokens).parse_top_level();
 
   auto type_checker = TypeCheckVisitor();
-  root->accept(type_checker);
+  type_checker.visit_statement_node(root.get());
 
   CodegenVisitor codegen;
   root->accept(codegen);
@@ -92,4 +92,19 @@ TEST(CodegenTest, GeneratesVariableAssignmentSwap) {
 
   RUN(output, program);
   ASSERT_EQ(output, 456);
+}
+
+TEST(CodegenTest, GeneratesIfStatement) {
+  auto program = R"(
+    func main()
+      if 2 == 2
+        return 8
+      end
+
+      return 1
+    end
+  )";
+
+  RUN(output, program);
+  ASSERT_EQ(output, 8);
 }

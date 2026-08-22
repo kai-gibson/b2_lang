@@ -15,4 +15,3 @@ func main()
   show b()
   return 1
 end
-
