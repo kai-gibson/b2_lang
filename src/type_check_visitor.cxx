@@ -293,8 +293,11 @@ void TypeCheckVisitor::check_expr_bin_expr(BinaryExpression* node,
                       "Left type {} does not match right type {}",
                       left.identifier, right.identifier);
     }
+    // use left since they must match by here
+    node->operand_type = left;
   } else {
     node->resolved_type = expected;
+    node->operand_type = expected;
 
     check_expr(node->lhs.get(), expected);
     check_expr(node->rhs.get(), expected);
@@ -391,11 +394,19 @@ auto TypeCheckVisitor::infer_expr_var_expr(VariableExpression* node) -> Type {
 }
 
 auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
-  auto left = infer_expr(node->lhs.get());
-  auto right = infer_expr(node->rhs.get());
+  // auto left = infer_expr(node->lhs.get());
+  // auto right = infer_expr(node->rhs.get());
 
+  Type left, right;
   if (is_bool_operator(node->op)) {
     node->resolved_type = BOOL_TYPE;
+
+    // must infer concrete types, bool means context stops here
+    left = infer_expr_top_level(node->lhs.get());
+    right = infer_expr_top_level(node->rhs.get());
+  } else {
+    left = infer_expr(node->lhs.get());
+    right = infer_expr(node->rhs.get());
   }
 
   auto left_is_literal = is_literal(left);
@@ -407,16 +418,12 @@ auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
 
     if (left_is_int && right_is_int) {
       node->operand_type = INT_LITERAL_TYPE;
-      return INT_LITERAL_TYPE;
     }
 
     // if one is a float, default both to float
     node->operand_type = FLOAT_LITERAL_TYPE;
-    return FLOAT_LITERAL_TYPE;
-  }
-
-  // only one is a literal, the other is concrete so we can infer from context
-  if (left_is_literal != right_is_literal) {
+  } else if (left_is_literal != right_is_literal) {
+    // only one is a literal, the other is concrete so we can infer from context
     Pair pair = left_is_literal ? Pair{.from = left, .to = right}
                                 : Pair{.from = right, .to = left};
 
@@ -428,6 +435,12 @@ auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
           pair.from.identifier, pair.to.identifier);
     }
 
+    if (left_is_literal) {
+      left = it->second;
+    } else {
+      right = it->second;
+    }
+
     node->operand_type = it->second;
   }
 
@@ -437,7 +450,13 @@ auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
                     left.identifier, right.identifier);
   }
 
-  if (!node->resolved_type) node->resolved_type = node->operand_type;
+  if (!node->operand_type.has_value()) {
+    node->operand_type = left;
+  }
+
+  if (!node->resolved_type.has_value()) {
+    node->resolved_type = node->operand_type;
+  }
 
   return *node->resolved_type;
 }

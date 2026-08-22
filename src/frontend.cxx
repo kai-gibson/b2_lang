@@ -24,8 +24,8 @@ void compile(const std::string& filename, bool output_llvm,
 
   PrintVisitor v;
   auto top = parser.parse_top_level();
-  top->accept(v);
-  std::cout << v.printer.to_string() << '\n';
+  // top->accept(v);
+  // std::cout << v.printer.to_string() << '\n';
 
   TypeCheckVisitor type_checker;
 
