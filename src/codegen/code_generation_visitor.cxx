@@ -95,11 +95,11 @@ void CodegenVisitor::visit(VariableDeclarationStatement& stmt) {
 
   auto r = emit(*stmt.value);
 
-  if (!stmt.resolved_type) {
+  if (!stmt.declaration_type) {
     throw std::runtime_error("Unable to resolve variable type");
   }
 
-  auto type = get_llvm_type(*stmt.resolved_type);
+  auto type = get_llvm_type(*stmt.declaration_type);
   auto* alloca = llvm_builder->CreateAlloca(type, nullptr, stmt.name);
   llvm_builder->CreateStore(r, alloca);
   named_values[stmt.name] = alloca;
@@ -131,19 +131,17 @@ void CodegenVisitor::visit(BinaryExpression& expr) {
     throw std::runtime_error("Couldn't resolve type for binary expression");
   }
 
-  // bool operations need to use type operations of the binary expression type
-
+  // bool operations need to use type operations of the operand type
   std::unique_ptr<TypeOperations> builder;
 
   if (expr.resolved_type->type_id == TypeId::Bool) {
-    std::cout << "BOOL CONDITION, EXPR TYPE: "
-              << expr.binary_resolved_type->identifier << "\n";
+    std::cout << "BOOL CONDITION, OPERAND TYPE: "
+              << expr.operand_type->identifier << "\n";
 
-    if (!expr.binary_resolved_type) {
-      throw std::runtime_error(
-          "Couldn't resolve type for boolean binary expression");
+    if (!expr.operand_type) {
+      throw std::runtime_error("Couldn't resolve type for boolean expression");
     }
-    builder = build_type_operations(*expr.binary_resolved_type, *llvm_builder);
+    builder = build_type_operations(*expr.operand_type, *llvm_builder);
   } else {
     builder = build_type_operations(*expr.resolved_type, *llvm_builder);
   }
@@ -229,7 +227,7 @@ void CodegenVisitor::visit(FunctionDeclaration& func_declaration) {
 }
 
 void CodegenVisitor::visit(ReturnStatement& ret) {
-  auto value = emit(*ret.value);
+  auto value = emit(*ret.expr);
 
   llvm_builder->CreateRet(value);
 }
@@ -249,9 +247,20 @@ void CodegenVisitor::visit(IfStatement& if_stmt) {
   auto cond = emit(*if_stmt.condition);
 
   auto* if_true =
-      llvm::BasicBlock::Create(*llvm_context, "iftrue", current_function);
+      llvm::BasicBlock::Create(*llvm_context, "if.then", current_function);
+
+  auto* if_end =
+      llvm::BasicBlock::Create(*llvm_context, "if.end", current_function);
+
+  llvm_builder->CreateCondBr(cond, if_true, if_end);
+
+  llvm_builder->SetInsertPoint(if_true);
 
   for (const auto& stmt : if_stmt.body) {
     stmt->accept(*this);
   }
+
+  llvm_builder->CreateBr(if_end);
+
+  llvm_builder->SetInsertPoint(if_end);
 }

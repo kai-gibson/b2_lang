@@ -62,7 +62,7 @@ add_library(learning_llvm_lib OBJECT
     src/parser.cxx
     src/ast.cxx
     src/type_check_visitor.cxx
-    #src/codegen/code_generation_visitor.cxx
+    src/codegen/code_generation_visitor.cxx
     src/codegen/operation_map.cxx
 )
 

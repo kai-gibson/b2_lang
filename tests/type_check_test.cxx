@@ -2,7 +2,6 @@
 
 #include "ast.h"
 #include "node.h"
-#include "type_check_visitor.h"
 
 TEST(TypeCheckTest, InfersInt32FromLiteralDecl) {
   CHECK_EXPR(root, "x = 12");
@@ -70,6 +69,42 @@ TEST(TypeCheckTest, InfersInt64FromLiteralBinaryExpr) {
   auto y_decl = cast<VariableDeclarationStatement>(stmts.at(1).get());
   ASSERT_TRUE(y_decl->declaration_type.has_value());
   ASSERT_EQ(y_decl->declaration_type->type_id, TypeId::Int64);
+}
+
+struct ExplicitTypeRecord {
+  std::string code;
+  TypeId expected;
+};
+
+class CheckExplicitTypeTest
+    : public testing::TestWithParam<ExplicitTypeRecord> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    ChecksExplicitType, CheckExplicitTypeTest,
+    testing::Values(
+        ExplicitTypeRecord{.code = "x:Int8 = 12", .expected = TypeId::Int8},
+        ExplicitTypeRecord{.code = "x:Int16 = 12", .expected = TypeId::Int16},
+        ExplicitTypeRecord{.code = "x:Int32 = 12", .expected = TypeId::Int32},
+        ExplicitTypeRecord{.code = "x:Int64 = 12", .expected = TypeId::Int64},
+        ExplicitTypeRecord{.code = "x:UInt8 = 12", .expected = TypeId::UInt8},
+        ExplicitTypeRecord{.code = "x:UInt16 = 12", .expected = TypeId::UInt16},
+        ExplicitTypeRecord{.code = "x:UInt32 = 12", .expected = TypeId::UInt32},
+        ExplicitTypeRecord{.code = "x:UInt64 = 12", .expected = TypeId::UInt64},
+        ExplicitTypeRecord{.code = "x:Float32 = 12.123",
+                           .expected = TypeId::Float32},
+        ExplicitTypeRecord{.code = "x:Float64 = 12.123",
+                           .expected = TypeId::Float64}),
+    ([](const testing::TestParamInfo<ExplicitTypeRecord>& info) -> std::string {
+      return type_id_to_str(info.param.expected);
+    }));
+
+TEST_P(CheckExplicitTypeTest, ChecksExplicitType) {
+  CHECK_EXPR(root, GetParam().code);
+
+  auto stmt = cast<VariableDeclarationStatement>(root.get());
+
+  ASSERT_TRUE(stmt->declaration_type.has_value());
+  ASSERT_EQ(stmt->declaration_type->type_id, GetParam().expected);
 }
 
 void test_bool_bin_expr(const std::string& code) {

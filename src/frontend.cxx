@@ -2,15 +2,15 @@
 
 #include <iostream>
 
-// #include "codegen/code_generation_visitor.h"
+#include "codegen/code_generation_visitor.h"
 #include "file_io.h"
 #include "lexer.h"
 #include "parser.h"
 #include "print_visitor.h"
 #include "type_check_visitor.h"
 
-void compile(const std::string& filename, bool output_llvm,
-             bool output_tokens) {
+void compile(const std::string& filename, bool output_llvm, bool output_tokens,
+             bool output_ast) {
   auto file_data = read_entire_file(filename);
   if (!file_data.has_value()) {
     std::cerr << "Error reading file: " << file_data.error().what() << '\n';
@@ -22,22 +22,22 @@ void compile(const std::string& filename, bool output_llvm,
 
   Parser parser(tokens);
 
-  PrintVisitor v;
   auto top = parser.parse_top_level();
-  // top->accept(v);
-  // std::cout << v.printer.to_string() << '\n';
 
   TypeCheckVisitor type_checker;
 
   type_checker.visit_statement_node(top.get());
 
-  top->accept(v);
-  std::cout << v.printer.to_string() << '\n';
+  if (output_ast) {
+    PrintVisitor v;
+    top->accept(v);
+    std::cout << v.printer.to_string() << '\n';
+  }
 
-  // CodegenVisitor codegen;
-  // top->accept(codegen);
+  CodegenVisitor codegen;
+  top->accept(codegen);
 
-  // if (output_llvm) codegen.output_llvm(filename);
+  if (output_llvm) codegen.output_llvm(filename);
 
-  // codegen.compile();
+  codegen.compile();
 }

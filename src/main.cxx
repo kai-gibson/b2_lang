@@ -16,9 +16,12 @@ auto main(int argc, char** argv) -> int {
     bool output_tokens{};
     app.add_flag("--output-tokens", output_tokens, "Output Tokens");
 
+    bool output_ast{};
+    app.add_flag("--output-ast", output_ast, "Output AST");
+
     CLI11_PARSE(app, argc, argv);
 
-    compile(filename, output_llvm, output_tokens);
+    compile(filename, output_llvm, output_tokens, output_ast);
   } catch (const std::exception& e) {
     std::cout << e.what();
   }
