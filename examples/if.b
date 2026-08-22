@@ -1,8 +1,9 @@
 func main() 
 
-  x: Int32 = 1
+  x: Int32 = 3
 
-  if x > 10
+
+  if x < 10
     show x
   end
 

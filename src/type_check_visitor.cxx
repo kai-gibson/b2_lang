@@ -442,8 +442,10 @@ auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
 
       if (left_is_literal) {
         left = it->second;
+        check_expr(node->lhs.get(), left);
       } else {
         right = it->second;
+        check_expr(node->rhs.get(), left);
       }
 
       node->operand_type = it->second;

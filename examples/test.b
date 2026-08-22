@@ -1,4 +1,5 @@
 func main() 
-  x = 10
-  return x
+  x: Int64 = 10
+  y = x + 3
+  return y
 end
