@@ -53,12 +53,6 @@ struct PrettyPrinter {
 struct PrintVisitor : public Visitor {
   PrettyPrinter printer;
 
-  // void print_resolved_type(ASTNode& node) {
-  //   if (node.resolved_type.has_value()) {
-  //     auto print_node = printer.add_node("ResolvedType");
-  //     printer.add_value(node.resolved_type->identifier);
-  //   }
-  // }
   void print_type(const std::optional<Type>& resolved_type,
                   const std::string& name = "ResolvedType") {
     if (resolved_type) {

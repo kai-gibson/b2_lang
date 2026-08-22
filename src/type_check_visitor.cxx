@@ -394,9 +394,6 @@ auto TypeCheckVisitor::infer_expr_var_expr(VariableExpression* node) -> Type {
 }
 
 auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
-  // auto left = infer_expr(node->lhs.get());
-  // auto right = infer_expr(node->rhs.get());
-
   Type left, right;
   if (is_bool_operator(node->op)) {
     node->resolved_type = BOOL_TYPE;
@@ -404,60 +401,68 @@ auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
     // must infer concrete types, bool means context stops here
     left = infer_expr_top_level(node->lhs.get());
     right = infer_expr_top_level(node->rhs.get());
+
+    if (left.type_id != right.type_id) {
+      throw TypeError(node->source_location,
+                      "Left type {} does not match right type {}",
+                      left.identifier, right.identifier);
+    }
+
+    node->operand_type = left;
   } else {
     left = infer_expr(node->lhs.get());
     right = infer_expr(node->rhs.get());
-  }
 
-  auto left_is_literal = is_literal(left);
-  auto right_is_literal = is_literal(right);
+    auto left_is_literal = is_literal(left);
+    auto right_is_literal = is_literal(right);
 
-  if (left_is_literal && right_is_literal) {
-    auto left_is_int = left.type_id == TypeId::IntLiteral;
-    auto right_is_int = right.type_id == TypeId::IntLiteral;
+    if (left_is_literal && right_is_literal) {
+      auto left_is_int = left.type_id == TypeId::IntLiteral;
+      auto right_is_int = right.type_id == TypeId::IntLiteral;
 
-    if (left_is_int && right_is_int) {
-      node->operand_type = INT_LITERAL_TYPE;
+      if (left_is_int && right_is_int) {
+        node->operand_type = INT_LITERAL_TYPE;
+      }
+
+      // if one is a float, default both to float
+      node->operand_type = FLOAT_LITERAL_TYPE;
+    } else if (left_is_literal != right_is_literal) {
+      // only one is a literal, the other is concrete so we can infer from
+      // context
+      Pair pair = left_is_literal ? Pair{.from = left, .to = right}
+                                  : Pair{.from = right, .to = left};
+
+      auto it = LITERAL_PROMOTION_MAP.find(pair);
+      if (it == LITERAL_PROMOTION_MAP.end()) {
+        throw TypeError(
+            node->source_location,
+            "Unable to automatically convert literal {} to target type {}",
+            pair.from.identifier, pair.to.identifier);
+      }
+
+      if (left_is_literal) {
+        left = it->second;
+      } else {
+        right = it->second;
+      }
+
+      node->operand_type = it->second;
     }
 
-    // if one is a float, default both to float
-    node->operand_type = FLOAT_LITERAL_TYPE;
-  } else if (left_is_literal != right_is_literal) {
-    // only one is a literal, the other is concrete so we can infer from context
-    Pair pair = left_is_literal ? Pair{.from = left, .to = right}
-                                : Pair{.from = right, .to = left};
-
-    auto it = LITERAL_PROMOTION_MAP.find(pair);
-    if (it == LITERAL_PROMOTION_MAP.end()) {
-      throw TypeError(
-          node->source_location,
-          "Unable to automatically convert literal {} to target type {}",
-          pair.from.identifier, pair.to.identifier);
+    if (left.type_id != right.type_id) {
+      throw TypeError(node->source_location,
+                      "Left type {} does not match right type {}",
+                      left.identifier, right.identifier);
     }
 
-    if (left_is_literal) {
-      left = it->second;
-    } else {
-      right = it->second;
+    if (!node->operand_type.has_value()) {
+      node->operand_type = left;
     }
 
-    node->operand_type = it->second;
+    if (!node->resolved_type.has_value()) {
+      node->resolved_type = node->operand_type;
+    }
   }
-
-  if (left.type_id != right.type_id) {
-    throw TypeError(node->source_location,
-                    "Left type {} does not match right type {}",
-                    left.identifier, right.identifier);
-  }
-
-  if (!node->operand_type.has_value()) {
-    node->operand_type = left;
-  }
-
-  if (!node->resolved_type.has_value()) {
-    node->resolved_type = node->operand_type;
-  }
-
   return *node->resolved_type;
 }
 
