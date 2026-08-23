@@ -99,7 +99,7 @@ auto Parser::parse_primary_expression() -> std::unique_ptr<ASTNode> {
 
 auto Parser::parse_int_expression() -> std::unique_ptr<ASTNode> {
   auto token = peek();
-  auto value = std::stol(token.value);
+  auto value = mp::int128_t(token.value);
   auto result =
       std::make_unique<IntLiteralExpression>(value, peek().source_location);
   advance();

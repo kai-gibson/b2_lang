@@ -34,6 +34,7 @@ target_include_directories(project_settings INTERFACE
 target_include_directories(project_settings SYSTEM INTERFACE
     ${LLVM_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/external/CLI11/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/multiprecision/include
 )
 
 target_compile_definitions(project_settings INTERFACE

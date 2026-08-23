@@ -32,7 +32,7 @@ auto is_integer(Type& type) -> bool {
   }
 }
 
-auto int_is_in_range(int64_t value, Type& expected) -> bool {
+auto int_is_in_range(mp::int128_t& value, Type& expected) -> bool {
   switch (expected.type_id) {
     case TypeId::Int8:
       return value >= INT8_MIN && value <= INT8_MAX;
@@ -47,9 +47,9 @@ auto int_is_in_range(int64_t value, Type& expected) -> bool {
     case TypeId::UInt16:
       return value >= 0 && value <= UINT16_MAX;
     case TypeId::UInt32:
-      return value >= 0 && std::cmp_less_equal(value, UINT32_MAX);
+      return value >= 0 && value <= UINT32_MAX;
     case TypeId::UInt64:
-      return value >= 0;
+      return value >= 0 && value <= UINT64_MAX;
     case TypeId::Float32: {
       constexpr int64_t MAX_F32_VALUE = 1LL << 24;
       return value >= -MAX_F32_VALUE && value <= MAX_F32_VALUE;
@@ -226,14 +226,14 @@ void TypeCheckVisitor::check_expr_int_literal(IntLiteralExpression* node,
       throw TypeError(
           node->source_location,
           "Integer literal ({}) cannot fit in type {} without data loss",
-          node->value, expected.identifier);
+          node->value.str(), expected.identifier);
     }
 
     node->resolved_type = expected;
   } else {
     throw TypeError(node->source_location,
                     "Cannot implicitly convert Integer literal ({}) to type {}",
-                    node->value, expected.identifier);
+                    node->value.str(), expected.identifier);
   }
 }
 

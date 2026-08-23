@@ -176,8 +176,29 @@ void CodegenVisitor::visit(IntLiteralExpression& expr) {
       throw std::runtime_error(
           "Got a non integer type inside int literal codegen.");
   }
-  result = llvm::ConstantInt::get(*llvm_context,
-                                  llvm::APInt(num_bits, expr.value, true));
+
+  bool is_signed{};
+  switch (expr.resolved_type->type_id) {
+    case TypeId::Int8:
+    case TypeId::Int16:
+    case TypeId::Int32:
+    case TypeId::Int64:
+      is_signed = true;
+      break;
+    case TypeId::UInt8:
+    case TypeId::UInt16:
+    case TypeId::UInt32:
+    case TypeId::UInt64:
+      is_signed = false;
+      break;
+    default:
+      throw std::runtime_error(
+          "Got a non integer type inside int literal codegen.");
+  }
+
+  result = llvm::ConstantInt::get(
+      *llvm_context,
+      llvm::APInt(num_bits, expr.value.convert_to<uint64_t>(), is_signed));
 }
 
 void CodegenVisitor::visit(VariableExpression& expr) {

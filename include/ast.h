@@ -1,6 +1,8 @@
 #ifndef AST_H
 #define AST_H
 
+#include <boost/multiprecision/cpp_int.hpp>
+namespace mp = boost::multiprecision;
 #include <cassert>
 #include <string>
 #include <unordered_map>
@@ -268,10 +270,10 @@ struct TypeExpression : public ASTNode {
 struct IntLiteralExpression : public ASTNode {
   static constexpr NodeKind KIND = NodeKind::IntLiteralExpression;
 
-  IntLiteralExpression(int32_t value, SourceLocation source_location)
-      : ASTNode(source_location, KIND), value(value) {}
+  IntLiteralExpression(mp::int128_t value, SourceLocation source_location)
+      : ASTNode(source_location, KIND), value(std::move(value)) {}
 
-  int64_t value;
+  mp::int128_t value;
   std::optional<Type> resolved_type;
   void accept(Visitor& v) override;
 };

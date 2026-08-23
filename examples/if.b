@@ -1,6 +1,6 @@
 func main() 
 
-  x: Int32 = 3
+  x: Int64 = 3
 
 
   if x < 10

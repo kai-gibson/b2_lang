@@ -1,6 +1,13 @@
 #include <gtest/gtest.h>
 
+#include <boost/multiprecision/cpp_int.hpp>
+using namespace boost::multiprecision::literals;
+namespace mp = boost::multiprecision;
+
+#include <gmock/gmock.h>
+
 #include "ast.h"
+#include "compile_error.h"
 #include "node.h"
 
 TEST(TypeCheckTest, InfersInt32FromLiteralDecl) {
@@ -188,4 +195,68 @@ TEST(TypeCheckTest, InfersLiteralAgainstConcreteBoolOp) {
 
   ASSERT_TRUE(right->resolved_type.has_value());
   EXPECT_EQ(right->resolved_type->type_id, TypeId::Int64);
+}
+
+struct IntRange {
+  TypeId int_type;
+  std::string value;
+  bool success;
+};
+
+class CheckIntFitsTest : public testing::TestWithParam<IntRange> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    CheckIntFits, CheckIntFitsTest,
+    testing::Values(
+        IntRange{.int_type = TypeId::Int8, .value = "127", .success = true},
+        IntRange{.int_type = TypeId::Int8, .value = "200", .success = false},
+        IntRange{.int_type = TypeId::Int16, .value = "32767", .success = true},
+        IntRange{.int_type = TypeId::Int16, .value = "50000", .success = false},
+        IntRange{
+            .int_type = TypeId::Int32, .value = "2147483647", .success = true},
+        IntRange{
+            .int_type = TypeId::Int32, .value = "2147483999", .success = false},
+        IntRange{.int_type = TypeId::Int64,
+                 .value = "9223372036854775807",
+                 .success = true},
+        IntRange{.int_type = TypeId::Int64,
+                 .value = "9223372036854775999",
+                 .success = false},
+
+        IntRange{.int_type = TypeId::UInt8, .value = "255", .success = true},
+        IntRange{.int_type = TypeId::UInt8, .value = "300", .success = false},
+        IntRange{.int_type = TypeId::UInt16, .value = "65535", .success = true},
+        IntRange{
+            .int_type = TypeId::UInt16, .value = "70000", .success = false},
+        IntRange{
+            .int_type = TypeId::UInt32, .value = "4294967295", .success = true},
+        IntRange{.int_type = TypeId::UInt32,
+                 .value = "5294967295",
+                 .success = false},
+        IntRange{.int_type = TypeId::UInt64,
+                 .value = "18446744073709551615",
+                 .success = true},
+        IntRange{.int_type = TypeId::UInt64,
+                 .value = "18446744073709999999",
+                 .success = false}),
+
+    ([](const testing::TestParamInfo<IntRange>& info) -> std::string {
+      return type_id_to_str(info.param.int_type) + "_" + info.param.value;
+    }));
+
+TEST_P(CheckIntFitsTest, CheckSizedIntFits) {
+  auto param = GetParam();
+  auto stmt_code =
+      std::format("x: {} = {}", type_id_to_str(param.int_type), param.value);
+  using ::testing::HasSubstr;
+  using ::testing::Not;
+
+  try {
+    CHECK_EXPR(root, stmt_code);
+    if (!param.success) FAIL() << "Expected out of range to throw";
+  } catch (TypeError& e) {
+    if (param.success) FAIL() << "Did not expect to throw. Error: " << e.what();
+
+    ASSERT_THAT(e.what(), HasSubstr("cannot fit"));
+  }
 }

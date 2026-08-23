@@ -69,7 +69,7 @@ struct PrintVisitor : public Visitor {
 
   void visit(IntLiteralExpression& expr) override {
     auto print_node = printer.add_node("IntLiteralExpression");
-    printer.add_value(std::to_string(expr.value));
+    printer.add_value(expr.value.str());
     print_type(expr.resolved_type);
   }
 
