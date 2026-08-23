@@ -6,7 +6,7 @@
 #include "lexer.h"
 #include "parser.h"
 
-auto is_literal(Type& type) -> bool {
+auto is_literal(const Type& type) -> bool {
   switch (type.type_id) {
     case TypeId::IntLiteral:
     case TypeId::FloatLiteral:
@@ -393,79 +393,69 @@ auto TypeCheckVisitor::infer_expr_var_expr(VariableExpression* node) -> Type {
   return *node->resolved_type;
 }
 
-auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
-  Type left, right;
-  if (is_bool_operator(node->op)) {
-    node->resolved_type = BOOL_TYPE;
+/*
+If a literal is involved, resolve to either concrete type or the best matching
+literal
+ */
+Type TypeCheckVisitor::resolve_literal_pair(const BinaryExpression* bin,
+                                            Type& left, Type& right) {
+  auto it = LITERAL_PROMOTION_MAP.find(Pair{.left = left, .right = right});
+  if (it == LITERAL_PROMOTION_MAP.end()) {
+    throw TypeError(
+        bin->source_location,
+        "Left {} and right {} types are not compatible for operation {}",
+        left.identifier, right.identifier, token_type_to_str(bin->op));
+  }
 
-    // must infer concrete types, bool means context stops here
-    left = infer_expr_top_level(node->lhs.get());
-    right = infer_expr_top_level(node->rhs.get());
+  Type found = it->second;
 
-    if (left.type_id != right.type_id) {
-      throw TypeError(node->source_location,
-                      "Left type {} does not match right type {}",
-                      left.identifier, right.identifier);
-    }
-
-    node->operand_type = left;
-  } else {
-    left = infer_expr(node->lhs.get());
-    right = infer_expr(node->rhs.get());
-
-    auto left_is_literal = is_literal(left);
-    auto right_is_literal = is_literal(right);
-
-    if (left_is_literal && right_is_literal) {
-      auto left_is_int = left.type_id == TypeId::IntLiteral;
-      auto right_is_int = right.type_id == TypeId::IntLiteral;
-
-      if (left_is_int && right_is_int) {
-        node->operand_type = INT_LITERAL_TYPE;
-      }
-
-      // if one is a float, default both to float
-      node->operand_type = FLOAT_LITERAL_TYPE;
-    } else if (left_is_literal != right_is_literal) {
-      // only one is a literal, the other is concrete so we can infer from
-      // context
-      Pair pair = left_is_literal ? Pair{.from = left, .to = right}
-                                  : Pair{.from = right, .to = left};
-
-      auto it = LITERAL_PROMOTION_MAP.find(pair);
-      if (it == LITERAL_PROMOTION_MAP.end()) {
-        throw TypeError(
-            node->source_location,
-            "Unable to automatically convert literal {} to target type {}",
-            pair.from.identifier, pair.to.identifier);
-      }
-
-      if (left_is_literal) {
-        left = it->second;
-        check_expr(node->lhs.get(), left);
-      } else {
-        right = it->second;
-        check_expr(node->rhs.get(), left);
-      }
-
-      node->operand_type = it->second;
-    }
-
-    if (left.type_id != right.type_id) {
-      throw TypeError(node->source_location,
-                      "Left type {} does not match right type {}",
-                      left.identifier, right.identifier);
-    }
-
-    if (!node->operand_type.has_value()) {
-      node->operand_type = left;
-    }
-
-    if (!node->resolved_type.has_value()) {
-      node->resolved_type = node->operand_type;
+  // push concrete type down if one is found
+  if (!is_literal(found)) {
+    if (is_literal(left)) {
+      check_expr(bin->lhs.get(), found);
+    } else {
+      check_expr(bin->rhs.get(), found);
     }
   }
-  return *node->resolved_type;
+
+  left = it->second;
+  right = it->second;
+  return it->second;
+}
+
+auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
+  auto left = infer_expr(node->lhs.get());
+  auto right = infer_expr(node->rhs.get());
+
+  Type operand_type, resolved_type;
+  if (is_literal(left) || is_literal(right)) {
+    operand_type = resolve_literal_pair(node, left, right);
+  }
+
+  if (left.type_id != right.type_id) {
+    throw TypeError(node->source_location,
+                    "Left {} and right {} types do not match for operation {}",
+                    left.identifier, right.identifier,
+                    token_type_to_str(node->op));
+  }
+
+  if (is_bool_operator(node->op)) {
+    resolved_type = BOOL_TYPE;
+
+    // bool must resolve now - no further context above
+    if (is_literal(left) && is_literal(right)) {
+      operand_type = get_literal_default(left, node->source_location);
+
+      check_expr(node->lhs.get(), operand_type);
+      check_expr(node->rhs.get(), operand_type);
+    }
+  } else {
+    resolved_type = operand_type;
+  }
+
+  node->operand_type = operand_type;
+  node->resolved_type = resolved_type;
+  return resolved_type;
 }
 
 auto TypeCheckVisitor::infer_expr_float_literal(FloatLiteralExpression* node)

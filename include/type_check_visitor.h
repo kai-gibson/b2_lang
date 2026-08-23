@@ -1,20 +1,19 @@
 #ifndef TYPE_CHECK_VISITOR_H
 #define TYPE_CHECK_VISITOR_H
 
-#include "utils/container.h"
-#include "visitor.h"
+#include "ast.h"
 
 auto check(VariableDeclarationStatement& stmt) -> Type;
 
 struct Pair {
-  Type from;
-  Type to;
+  Type left;
+  Type right;
 
   auto operator==(const Pair& pair) const -> bool {
-    auto from = pair.from.type_id == this->from.type_id;
-    auto to = pair.to.type_id == this->to.type_id;
+    auto left = pair.left.type_id == this->left.type_id;
+    auto right = pair.right.type_id == this->right.type_id;
 
-    return to && from;
+    return right && left;
   }
 };
 
@@ -22,29 +21,47 @@ namespace std {
 template <>
 struct hash<Pair> {
   auto operator()(const Pair& k) const noexcept -> std::size_t {
-    // Compute individual hashes
-    std::size_t h1 = std::hash<TypeId>{}(k.from.type_id);
-    std::size_t h2 = std::hash<TypeId>{}(k.to.type_id);
+    std::size_t h1 = std::hash<TypeId>{}(k.left.type_id);
+    std::size_t h2 = std::hash<TypeId>{}(k.right.type_id);
 
-    // Combine hashes using a standard bit-shifting formula
     return h1 ^ (h2 << 1);
   }
 };
 };  // namespace std
 
 const std::unordered_map<Pair, Type> LITERAL_PROMOTION_MAP{
-    {Pair{.from = INT_LITERAL_TYPE, .to = INT8_TYPE}, INT8_TYPE},
-    {Pair{.from = INT_LITERAL_TYPE, .to = INT16_TYPE}, INT16_TYPE},
-    {Pair{.from = INT_LITERAL_TYPE, .to = INT32_TYPE}, INT32_TYPE},
-    {Pair{.from = INT_LITERAL_TYPE, .to = INT64_TYPE}, INT64_TYPE},
-    {Pair{.from = INT_LITERAL_TYPE, .to = UINT8_TYPE}, UINT8_TYPE},
-    {Pair{.from = INT_LITERAL_TYPE, .to = UINT16_TYPE}, UINT16_TYPE},
-    {Pair{.from = INT_LITERAL_TYPE, .to = UINT32_TYPE}, UINT32_TYPE},
-    {Pair{.from = INT_LITERAL_TYPE, .to = UINT64_TYPE}, UINT64_TYPE},
-    {Pair{.from = INT_LITERAL_TYPE, .to = FLOAT32_TYPE}, FLOAT32_TYPE},
-    {Pair{.from = INT_LITERAL_TYPE, .to = FLOAT64_TYPE}, FLOAT64_TYPE},
-    {Pair{.from = FLOAT_LITERAL_TYPE, .to = FLOAT32_TYPE}, FLOAT32_TYPE},
-    {Pair{.from = FLOAT_LITERAL_TYPE, .to = FLOAT64_TYPE}, FLOAT64_TYPE},
+    {Pair{.left = INT_LITERAL_TYPE, .right = INT8_TYPE}, INT8_TYPE},
+    {Pair{.left = INT_LITERAL_TYPE, .right = INT16_TYPE}, INT16_TYPE},
+    {Pair{.left = INT_LITERAL_TYPE, .right = INT32_TYPE}, INT32_TYPE},
+    {Pair{.left = INT_LITERAL_TYPE, .right = INT64_TYPE}, INT64_TYPE},
+    {Pair{.left = INT_LITERAL_TYPE, .right = UINT8_TYPE}, UINT8_TYPE},
+    {Pair{.left = INT_LITERAL_TYPE, .right = UINT16_TYPE}, UINT16_TYPE},
+    {Pair{.left = INT_LITERAL_TYPE, .right = UINT32_TYPE}, UINT32_TYPE},
+    {Pair{.left = INT_LITERAL_TYPE, .right = UINT64_TYPE}, UINT64_TYPE},
+    {Pair{.left = INT_LITERAL_TYPE, .right = FLOAT32_TYPE}, FLOAT32_TYPE},
+    {Pair{.left = INT_LITERAL_TYPE, .right = FLOAT64_TYPE}, FLOAT64_TYPE},
+    {Pair{.left = FLOAT_LITERAL_TYPE, .right = FLOAT32_TYPE}, FLOAT32_TYPE},
+    {Pair{.left = FLOAT_LITERAL_TYPE, .right = FLOAT64_TYPE}, FLOAT64_TYPE},
+    {Pair{.left = INT8_TYPE, .right = INT_LITERAL_TYPE}, INT8_TYPE},
+    {Pair{.left = INT16_TYPE, .right = INT_LITERAL_TYPE}, INT16_TYPE},
+    {Pair{.left = INT32_TYPE, .right = INT_LITERAL_TYPE}, INT32_TYPE},
+    {Pair{.left = INT64_TYPE, .right = INT_LITERAL_TYPE}, INT64_TYPE},
+    {Pair{.left = UINT8_TYPE, .right = INT_LITERAL_TYPE}, UINT8_TYPE},
+    {Pair{.left = UINT16_TYPE, .right = INT_LITERAL_TYPE}, UINT16_TYPE},
+    {Pair{.left = UINT32_TYPE, .right = INT_LITERAL_TYPE}, UINT32_TYPE},
+    {Pair{.left = UINT64_TYPE, .right = INT_LITERAL_TYPE}, UINT64_TYPE},
+    {Pair{.left = FLOAT32_TYPE, .right = INT_LITERAL_TYPE}, FLOAT32_TYPE},
+    {Pair{.left = FLOAT64_TYPE, .right = INT_LITERAL_TYPE}, FLOAT64_TYPE},
+    {Pair{.left = FLOAT32_TYPE, .right = FLOAT_LITERAL_TYPE}, FLOAT32_TYPE},
+    {Pair{.left = FLOAT64_TYPE, .right = FLOAT_LITERAL_TYPE}, FLOAT64_TYPE},
+    {Pair{.left = INT_LITERAL_TYPE, .right = FLOAT_LITERAL_TYPE},
+     FLOAT_LITERAL_TYPE},
+    {Pair{.left = FLOAT_LITERAL_TYPE, .right = INT_LITERAL_TYPE},
+     FLOAT_LITERAL_TYPE},
+    {Pair{.left = INT_LITERAL_TYPE, .right = INT_LITERAL_TYPE},
+     INT_LITERAL_TYPE},
+    {Pair{.left = FLOAT_LITERAL_TYPE, .right = FLOAT_LITERAL_TYPE},
+     FLOAT_LITERAL_TYPE},
 };
 
 class TypeCheckVisitor {
@@ -81,6 +98,9 @@ class TypeCheckVisitor {
   /// by defaulting literals and pushing them back down.
   /// This is basically the "YOU NEED TO RESOLVE NOW" wrapper.
   auto infer_expr_top_level(ASTNode* node) -> Type;
+
+  Type resolve_literal_pair(const BinaryExpression* bin, Type& left,
+                            Type& right);
 
   Type result;
   std::unordered_map<std::string, Type> variable_map;
