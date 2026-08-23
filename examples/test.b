@@ -1,9 +1,11 @@
 func main() 
-  x: Int64 = 10
+  x: Int64 = 4
 
   if x > 5
-    show x
-  end
+    show 11
+  else 
+    show 22
+  end 
 
   return 1
 end

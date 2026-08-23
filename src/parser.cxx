@@ -225,11 +225,17 @@ auto Parser::parse_if_statement() -> std::unique_ptr<ASTNode> {
 
   if_statement->condition = parse_expression(0);
 
-  while (peek().type != TokenType::End) {
+  while (peek().type != TokenType::End && peek().type != TokenType::Else) {
     if_statement->body.push_back(parse_statement());
   }
 
-  consume(TokenType::End);
+  if (peek().type == TokenType::Else) {
+    consume(TokenType::Else);
+    while (peek().type != TokenType::End && peek().type != TokenType::Else) {
+      if_statement->else_body.push_back(parse_statement());
+    }
+  }
 
+  consume(TokenType::End);
   return std::move(if_statement);
 }

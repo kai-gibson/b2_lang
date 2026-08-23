@@ -285,6 +285,7 @@ struct IfStatement : public ASTNode {
 
   std::unique_ptr<ASTNode> condition;
   std::vector<std::unique_ptr<ASTNode>> body;
+  std::vector<std::unique_ptr<ASTNode>> else_body;
   void accept(Visitor& v) override;
 };
 

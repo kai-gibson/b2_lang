@@ -142,6 +142,12 @@ void TypeCheckVisitor::visit_statement_if(IfStatement* ifstmt) {
   for (auto& stmt : ifstmt->body) {
     visit_statement_node(stmt.get());
   }
+
+  if (ifstmt->else_body.size()) {
+    for (auto& stmt : ifstmt->else_body) {
+      visit_statement_node(stmt.get());
+    }
+  }
 }
 
 void TypeCheckVisitor::visit_statement_var_assign(

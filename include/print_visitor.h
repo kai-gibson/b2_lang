@@ -145,10 +145,22 @@ struct PrintVisitor : public Visitor {
 
   void visit(IfStatement& ifstmt) override {
     auto print_node = printer.add_node("IfStatement");
+    {
+      auto cond = printer.add_node("Cond");
+      ifstmt.condition->accept(*this);
+    }
 
-    ifstmt.condition->accept(*this);
-    for (const auto& stmt : ifstmt.body) {
-      stmt->accept(*this);
+    {
+      auto if_then = printer.add_node("IfBody");
+
+      for (const auto& stmt : ifstmt.body) {
+        stmt->accept(*this);
+      }
+    }
+
+    if (ifstmt.else_body.size()) {
+      auto else_then = printer.add_node("ElseBody");
+      for (const auto& stmt : ifstmt.else_body) stmt->accept(*this);
     }
   }
 };
