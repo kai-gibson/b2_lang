@@ -3,7 +3,6 @@
 #include <llvm/IR/Verifier.h>
 
 #include <fstream>
-#include <iostream>
 
 #include "codegen/operation_map.h"
 #include "compiler.h"
@@ -65,8 +64,8 @@ void CodegenVisitor::compile() {
   if (llvm::verifyModule(*llvm_module, &llvm::errs()))
     throw std::runtime_error("LLVM IR errors detected. See output");
 
-  emit_object_file(*llvm_module, "output.o");
-  link("output.o", "output");
+  compiler::emit_object_file(*llvm_module, "output.o");
+  compiler::link("output.o", "output");
 }
 
 void CodegenVisitor::output_llvm(const std::string_view filename) {
@@ -135,9 +134,6 @@ void CodegenVisitor::visit(BinaryExpression& expr) {
   std::unique_ptr<TypeOperations> builder;
 
   if (expr.resolved_type->type_id == TypeId::Bool) {
-    std::cout << "BOOL CONDITION, OPERAND TYPE: "
-              << expr.operand_type->identifier << "\n";
-
     if (!expr.operand_type) {
       throw std::runtime_error("Couldn't resolve type for boolean expression");
     }

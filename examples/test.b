@@ -1,6 +1,9 @@
 func main() 
   x: Int64 = 10
 
-  y = x > 3
+  if x > 5
+    show x
+  end
+
   return 1
 end

@@ -1,3 +1,3 @@
 #!/bin/sh
 
-run-clang-tidy -p build/ -header-filter='^include/' src/*.cxx include/*.h -j 8 -fix
+run-clang-tidy -p build/ src/*.cxx include/*.h -j 8 -fix

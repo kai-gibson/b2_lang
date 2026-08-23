@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <string>
 
+namespace compiler {
 inline void emit_object_file(llvm::Module& module,
                              const std::string& filename) {
   llvm::InitializeNativeTarget();
@@ -49,5 +50,6 @@ inline void link(const std::string& obj_file, const std::string& out_file) {
   auto cmd = "clang " + obj_file + " -o " + out_file;
   if (std::system(cmd.c_str()) != 0) throw std::runtime_error("Linking failed");
 }
+}  // namespace compiler
 
 #endif  // COMPILER_H

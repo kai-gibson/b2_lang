@@ -281,20 +281,9 @@ void TypeCheckVisitor::check_expr_bin_expr(BinaryExpression* node,
   // bool operators have a different operand type to resolved type
   Type left, right;
   if (is_bool_operator(node->op)) {
-    node->resolved_type = BOOL_TYPE;
-
-    // must infer concrete types since top level doesn't give us context to push
-    // down
-    left = infer_expr_top_level(node->lhs.get());
-    right = infer_expr_top_level(node->rhs.get());
-
-    if (left.type_id != right.type_id) {
-      throw TypeError(node->source_location,
-                      "Left type {} does not match right type {}",
-                      left.identifier, right.identifier);
-    }
-    // use left since they must match by here
-    node->operand_type = left;
+    // bools get inferred since their resolved type isn't related to the operand
+    // type
+    infer_expr_bin_expr(node);
   } else {
     node->resolved_type = expected;
     node->operand_type = expected;
