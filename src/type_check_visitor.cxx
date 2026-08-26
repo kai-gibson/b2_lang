@@ -101,6 +101,23 @@ auto get_literal_default(Type& type, SourceLocation loc) -> Type {
   }
 }
 
+VariableScopeStack::VariableScopeStack() { _scope_map.emplace_back(); }
+
+auto VariableScopeStack::find(const std::string& key) -> std::optional<Type> {
+  for (const auto& scope : _scope_map) {
+    auto it = scope.find(key);
+    if (it != scope.end()) return it->second;
+  }
+
+  return std::nullopt;
+}
+
+auto VariableScopeStack::push() -> void { _scope_map.emplace_back(); }
+auto VariableScopeStack::pop() -> void { _scope_map.pop_back(); }
+auto VariableScopeStack::store(const std::string& key, Type& value) -> void {
+  _scope_map.back()[key] = value;
+}
+
 auto TypeCheckVisitor::infer_expr_top_level(ASTNode* node) -> Type {
   auto resolved_type = infer_expr(node);
 
@@ -115,9 +132,9 @@ auto TypeCheckVisitor::infer_expr_top_level(ASTNode* node) -> Type {
 
 void TypeCheckVisitor::visit_statement_var_decl(
     VariableDeclarationStatement* decl) {
-  auto it = variable_map.find(decl->name);
+  auto found = scope_stack.find(decl->name);
 
-  if (it != variable_map.end()) {
+  if (found) {
     throw TypeError(decl->source_location,
                     "Attempted re-declaration of variable \"{}\"", decl->name);
   }
@@ -132,7 +149,7 @@ void TypeCheckVisitor::visit_statement_var_decl(
     decl->declaration_type = infer_expr_top_level(decl->value.get());
   }
 
-  variable_map[decl->name] = *decl->declaration_type;
+  scope_stack.store(decl->name, *decl->declaration_type);
 }
 
 void TypeCheckVisitor::visit_statement_if(IfStatement* ifstmt) {
@@ -152,14 +169,14 @@ void TypeCheckVisitor::visit_statement_if(IfStatement* ifstmt) {
 
 void TypeCheckVisitor::visit_statement_var_assign(
     VariableAssignmentStatement* var) {
-  auto it = variable_map.find(var->name);
+  auto found = this->scope_stack.find(var->name);
 
-  if (it == variable_map.end()) {
+  if (!found.has_value()) {
     throw TypeError(var->source_location, "Usage of undefined variable \"{}\"",
                     var->name);
   }
 
-  auto& var_type = it->second;
+  auto& var_type = found.value();
 
   check_expr(var->value.get(), var_type);
 }
@@ -167,7 +184,7 @@ void TypeCheckVisitor::visit_statement_var_assign(
 void TypeCheckVisitor::visit_statement_program(Program* prog) {
   for (auto& fn : prog->functions) {
     visit_statement_node(fn.get());
-    variable_map.clear();  // clear map between function declarations
+    scope_stack.pop();
   }
 }
 
@@ -267,16 +284,16 @@ void TypeCheckVisitor::check_expr_func_call(FunctionCallExpression* node,
 
 void TypeCheckVisitor::check_expr_var_expr(VariableExpression* node,
                                            Type& expected) {
-  auto it = variable_map.find(node->name);
-  if (it == variable_map.end()) {
+  auto found = scope_stack.find(node->name);
+  if (!found.has_value()) {
     throw TypeError(node->source_location, "Usage of undefined variable \"{}\"",
                     node->name);
   }
 
-  if (it->second.type_id != expected.type_id) {
+  if (found->type_id != expected.type_id) {
     throw TypeError(node->source_location,
                     "Expected type {}, got {} from usage of variable \"{}\"",
-                    expected.identifier, it->second.identifier, node->name);
+                    expected.identifier, found->identifier, node->name);
   }
 
   node->resolved_type = expected;
@@ -378,13 +395,13 @@ auto TypeCheckVisitor::infer_expr_func_call(FunctionCallExpression* node)
 }
 
 auto TypeCheckVisitor::infer_expr_var_expr(VariableExpression* node) -> Type {
-  auto it = variable_map.find(node->name);
-  if (it == variable_map.end()) {
+  auto found = scope_stack.find(node->name);
+  if (!found.has_value()) {
     throw TypeError(node->source_location, "Usage of undefined variable \"{}\"",
                     node->name);
   }
 
-  node->resolved_type = it->second;
+  node->resolved_type = *found;
   return *node->resolved_type;
 }
 

@@ -47,12 +47,16 @@ target_compile_options(project_settings INTERFACE
     -Wno-deprecated-declarations -Wno-unused-parameter
 )
 
+target_link_options(project_settings INTERFACE
+)
+
 if(ENABLE_COVERAGE)
     target_compile_options(project_settings INTERFACE
         -fprofile-instr-generate -fcoverage-mapping
     )
     target_link_options(project_settings INTERFACE
         -fprofile-instr-generate -fcoverage-mapping
+
     )
 endif()
 

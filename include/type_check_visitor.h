@@ -5,6 +5,18 @@
 
 auto check(VariableDeclarationStatement& stmt) -> Type;
 
+class VariableScopeStack {
+ public:
+  VariableScopeStack();
+  auto find(const std::string& key) -> std::optional<Type>;
+  auto store(const std::string& key, Type& value) -> void;
+  auto push() -> void;
+  auto pop() -> void;
+
+ private:
+  std::vector<std::unordered_map<std::string, Type>> _scope_map;
+};
+
 struct Pair {
   Type left;
   Type right;
@@ -103,7 +115,7 @@ class TypeCheckVisitor {
                             Type& right);
 
   Type result;
-  std::unordered_map<std::string, Type> variable_map;
+  VariableScopeStack scope_stack;
   std::unordered_map<std::string, Type> function_map;
   FunctionDeclaration* current_function{};
 };

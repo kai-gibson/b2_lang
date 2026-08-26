@@ -28,8 +28,10 @@ inline void emit_object_file(llvm::Module& module,
   auto* target = llvm::TargetRegistry::lookupTarget(target_triple, error);
   if (!target) throw std::runtime_error("Failed to find target: " + error);
 
+  std::string features = "";
   auto* machine = target->createTargetMachine(
-      target_triple, "generic", "", llvm::TargetOptions{}, llvm::Reloc::PIC_);
+      target_triple, llvm::sys::getHostCPUName().str(), features,
+      llvm::TargetOptions{}, llvm::Reloc::PIC_);
 
   module.setDataLayout(machine->createDataLayout());
 

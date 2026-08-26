@@ -4,3 +4,10 @@ debug
 .vscode
 examples/*.ll
 tests/Testing/Temporary
+src/codegen/default.profraw
+src/default.profraw
+a.out
+default.profraw
+output
+output.o
+Testing/Temporary
