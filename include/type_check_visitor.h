@@ -115,7 +115,7 @@ class TypeCheckVisitor {
                             Type& right);
 
   Type result;
-  VariableScopeStack scope_stack;
+  VariableScopeStack variable_scope_stack;
   std::unordered_map<std::string, Type> function_map;
   FunctionDeclaration* current_function{};
 };

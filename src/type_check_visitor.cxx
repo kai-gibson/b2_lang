@@ -132,7 +132,7 @@ auto TypeCheckVisitor::infer_expr_top_level(ASTNode* node) -> Type {
 
 void TypeCheckVisitor::visit_statement_var_decl(
     VariableDeclarationStatement* decl) {
-  auto found = scope_stack.find(decl->name);
+  auto found = variable_scope_stack.find(decl->name);
 
   if (found) {
     throw TypeError(decl->source_location,
@@ -149,27 +149,31 @@ void TypeCheckVisitor::visit_statement_var_decl(
     decl->declaration_type = infer_expr_top_level(decl->value.get());
   }
 
-  scope_stack.store(decl->name, *decl->declaration_type);
+  variable_scope_stack.store(decl->name, *decl->declaration_type);
 }
 
 void TypeCheckVisitor::visit_statement_if(IfStatement* ifstmt) {
   auto expected = BOOL_TYPE;
   check_expr(ifstmt->condition.get(), expected);
 
+  variable_scope_stack.push();
   for (auto& stmt : ifstmt->body) {
     visit_statement_node(stmt.get());
   }
+  variable_scope_stack.pop();
 
+  variable_scope_stack.push();
   if (ifstmt->else_body.size()) {
     for (auto& stmt : ifstmt->else_body) {
       visit_statement_node(stmt.get());
     }
   }
+  variable_scope_stack.pop();
 }
 
 void TypeCheckVisitor::visit_statement_var_assign(
     VariableAssignmentStatement* var) {
-  auto found = this->scope_stack.find(var->name);
+  auto found = this->variable_scope_stack.find(var->name);
 
   if (!found.has_value()) {
     throw TypeError(var->source_location, "Usage of undefined variable \"{}\"",
@@ -184,7 +188,7 @@ void TypeCheckVisitor::visit_statement_var_assign(
 void TypeCheckVisitor::visit_statement_program(Program* prog) {
   for (auto& fn : prog->functions) {
     visit_statement_node(fn.get());
-    scope_stack.pop();
+    variable_scope_stack.pop();
   }
 }
 
@@ -284,7 +288,7 @@ void TypeCheckVisitor::check_expr_func_call(FunctionCallExpression* node,
 
 void TypeCheckVisitor::check_expr_var_expr(VariableExpression* node,
                                            Type& expected) {
-  auto found = scope_stack.find(node->name);
+  auto found = variable_scope_stack.find(node->name);
   if (!found.has_value()) {
     throw TypeError(node->source_location, "Usage of undefined variable \"{}\"",
                     node->name);
@@ -304,8 +308,8 @@ void TypeCheckVisitor::check_expr_bin_expr(BinaryExpression* node,
   // bool operators have a different operand type to resolved type
   Type left, right;
   if (is_bool_operator(node->op)) {
-    // bools get inferred since their resolved type isn't related to the operand
-    // type
+    // bools get inferred since their resolved type isn't related to the
+    // operand type
     infer_expr_bin_expr(node);
   } else {
     node->resolved_type = expected;
@@ -395,7 +399,7 @@ auto TypeCheckVisitor::infer_expr_func_call(FunctionCallExpression* node)
 }
 
 auto TypeCheckVisitor::infer_expr_var_expr(VariableExpression* node) -> Type {
-  auto found = scope_stack.find(node->name);
+  auto found = variable_scope_stack.find(node->name);
   if (!found.has_value()) {
     throw TypeError(node->source_location, "Usage of undefined variable \"{}\"",
                     node->name);
