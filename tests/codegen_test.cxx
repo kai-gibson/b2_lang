@@ -19,6 +19,10 @@ auto codegen(const std::string& program) -> CodegenVisitor {
 
   CodegenVisitor codegen;
   root->accept(codegen);
+
+  if (llvm::verifyModule(*codegen.llvm_module, &llvm::errs()))
+    throw std::runtime_error("LLVM IR errors detected. See output");
+
   return codegen;
 };
 
@@ -111,14 +115,18 @@ TEST(CodegenTest, GeneratesIfStatement) {
 
 TEST(CodegenTest, GeneratesElseIfStatement) {
   auto program = R"(
-    x = 5
+    func main()
+      x = 5
   
-    if x > 5
-      show 1 
-    elseif x < 5
-      show 2 
-    else
-      show 3 
+      if x > 5
+        return 1 
+      elseif x < 5
+        return 2 
+      else
+        return 3 
+      end
+
+      return 4
     end
   )";
 

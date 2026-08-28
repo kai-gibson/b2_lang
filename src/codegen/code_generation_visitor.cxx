@@ -1,5 +1,6 @@
 #include "codegen/code_generation_visitor.h"
 
+#include <llvm/IR/Instructions.h>
 #include <llvm/IR/Verifier.h>
 
 #include <fstream>
@@ -218,13 +219,14 @@ void CodegenVisitor::visit(Program& expr) {
 }
 
 void CodegenVisitor::visit(ShowStatement& stmt) {
+  std::cerr << "show stmt... " << stmt.source_location.line << "\n";
   auto* fmt = llvm_builder->CreateGlobalStringPtr("%d\n", "fmt");
 
   auto* printf_fn = llvm_module->getFunction("printf");
 
   result = emit(*stmt.expr);
-  llvm_builder->CreateCall(printf_fn->getFunctionType(), printf_fn,
-                           {fmt, result});
+  result = llvm_builder->CreateCall(printf_fn->getFunctionType(), printf_fn,
+                                    {fmt, result});
 }
 
 void CodegenVisitor::visit(FunctionDeclaration& func_declaration) {
@@ -246,7 +248,7 @@ void CodegenVisitor::visit(FunctionDeclaration& func_declaration) {
 void CodegenVisitor::visit(ReturnStatement& ret) {
   auto value = emit(*ret.expr);
 
-  llvm_builder->CreateRet(value);
+  result = llvm_builder->CreateRet(value);
 }
 
 void CodegenVisitor::visit(TypeExpression& ret) { (void)ret; }
@@ -276,16 +278,22 @@ void CodegenVisitor::visit(IfStatement& if_stmt) {
     llvm_builder->CreateCondBr(cond, if_then, if_else);
     llvm_builder->SetInsertPoint(if_then);
 
-    if_stmt.if_then->accept(*this);
+    auto if_then_val = emit(*if_stmt.if_then);
 
-    llvm_builder->CreateBr(if_end);
+    // If there's a return statement in the block, skip br inst
+    if (!llvm_builder->GetInsertBlock()->getTerminator()) {
+      llvm_builder->CreateBr(if_end);
+    }
+
     llvm_builder->SetInsertPoint(if_else);
 
-    if_stmt.if_else->accept(*this);
-
-    llvm_builder->CreateBr(if_end);
+    emit(*if_stmt.if_else);
+    if (!llvm_builder->GetInsertBlock()->getTerminator()) {
+      llvm_builder->CreateBr(if_end);
+    }
 
     llvm_builder->SetInsertPoint(if_end);
+    result = if_then_val;
   } else {
     auto* if_then =
         llvm::BasicBlock::Create(*llvm_context, "if.then", current_function);
@@ -296,16 +304,20 @@ void CodegenVisitor::visit(IfStatement& if_stmt) {
     llvm_builder->CreateCondBr(cond, if_then, if_end);
     llvm_builder->SetInsertPoint(if_then);
 
-    if_stmt.if_then->accept(*this);
+    auto if_then_val = emit(*if_stmt.if_then);
 
-    llvm_builder->CreateBr(if_end);
+    if (!llvm_builder->GetInsertBlock()->getTerminator()) {
+      llvm_builder->CreateBr(if_end);
+    }
 
     llvm_builder->SetInsertPoint(if_end);
+
+    result = if_then_val;
   }
 }
 
 void CodegenVisitor::visit(BlockStatement& block) {
   for (const auto& stmt : block.statements) {
-    stmt->accept(*this);
+    result = emit(*stmt);
   }
 }

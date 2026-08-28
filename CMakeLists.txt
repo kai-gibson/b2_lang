@@ -60,7 +60,7 @@ if(ENABLE_COVERAGE)
     )
 endif()
 
-add_library(learning_llvm_lib OBJECT
+add_library(b2_lib OBJECT
     src/frontend.cxx
     src/lexer.cxx
     src/file_io.cxx
@@ -71,15 +71,15 @@ add_library(learning_llvm_lib OBJECT
     src/codegen/operation_map.cxx
 )
 
-target_link_libraries(learning_llvm_lib
+target_link_libraries(b2_lib
     PUBLIC ${llvm_libs}
     PRIVATE project_settings
 )
 
-add_executable(learning_llvm src/main.cxx)
+add_executable(b2 src/main.cxx)
 
-target_link_libraries(learning_llvm PRIVATE
-    learning_llvm_lib
+target_link_libraries(b2 PRIVATE
+    b2_lib
     project_settings
 )
 

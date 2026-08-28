@@ -1,15 +1,14 @@
 func main() 
-  x: Int64 = 10
+  x = 10
 
   if x > 5
-    y = 10
-    show 11
+    return 1
   elseif x < 5
-    show 44
+    return 2
   else 
-    show 22
+    return 3
   end
-  
 
-  return 1
+  show 99
+  return 4
 end
