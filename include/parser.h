@@ -21,6 +21,11 @@ constexpr auto is_builtin_type(std::string_view target) -> bool {
 
 auto precedence(TokenType t) -> int32_t;
 
+const std::vector<TokenType> IF_TERMINATORS = {TokenType::ElseIf,
+                                               TokenType::Else, TokenType::End};
+
+bool contains(const std::vector<TokenType>& terminators, TokenType token);
+
 class Parser {
  public:
   Parser(const Tokens& tokens) : tokens(tokens) {}
@@ -49,6 +54,11 @@ class Parser {
   auto parse_type_expression() -> std::unique_ptr<ASTNode>;
   auto parse_int_expression() -> std::unique_ptr<ASTNode>;
   auto parse_if_statement() -> std::unique_ptr<ASTNode>;
+  auto parse_if() -> std::unique_ptr<ASTNode>;
+  auto parse_block_statement(const std::vector<TokenType>& terminators)
+      -> std::unique_ptr<ASTNode>;
+
+  auto parse_if_body(std::vector<std::unique_ptr<ASTNode>>& body) -> void;
 
   // vars
   const Tokens& tokens;

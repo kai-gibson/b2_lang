@@ -36,6 +36,7 @@ enum class TokenType : int8_t {
   If,
   Else,
   Not,
+  ElseIf,
   // EOF
   EndOfFile,
 };
@@ -69,6 +70,7 @@ constexpr auto TOKEN_TYPE_STR = to_static_map<TokenType, std::string_view>({
     {TokenType::If, "If"},
     {TokenType::Else, "Else"},
     {TokenType::Not, "Not"},
+    {TokenType::ElseIf, "ElseIf"},
     {TokenType::EndOfFile, "EndOfFile"},
 });
 
@@ -83,6 +85,7 @@ constexpr auto KEYWORDS = to_static_map<std::string_view, TokenType>({
     {"if", TokenType::If},
     {"else", TokenType::Else},
     {"not", TokenType::Not},
+    {"elseif", TokenType::ElseIf},
 });
 
 constexpr auto SYMBOLS = to_static_map<std::string_view, TokenType>({

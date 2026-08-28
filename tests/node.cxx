@@ -28,14 +28,15 @@ auto parse_statements(const std::string& body, Nodes& nodes) -> void {
   auto fn = dynamic_cast<FunctionDeclaration*>(prog->functions.at(0).get());
   ASSERT_NE(fn, nullptr) << "Function not generated in parse_statements";
 
-  ASSERT_FALSE(fn->statements.empty()) << "No statements generated";
-  auto ret = dynamic_cast<ReturnStatement*>(fn->statements.back().get());
+  auto block = cast<BlockStatement>(fn->statements.get());
+  ASSERT_FALSE(block->statements.empty()) << "No statements generated";
+  auto ret = dynamic_cast<ReturnStatement*>(block->statements.back().get());
   ASSERT_NE(ret, nullptr)
       << "Return statemnt not generated in parse_statements";
 
-  fn->statements.pop_back();  // remove return statement
+  block->statements.pop_back();  // remove return statement
 
-  nodes = std::move(fn->statements);
+  nodes = std::move(block->statements);
 }
 
 auto parse_simple_expression(const std::string& body, Node& node) -> void {
@@ -81,14 +82,15 @@ auto check_statements(const std::string& body, Nodes& nodes) -> void {
   auto fn = dynamic_cast<FunctionDeclaration*>(prog->functions.at(0).get());
   ASSERT_NE(fn, nullptr) << "Function not generated in parse_statements";
 
-  ASSERT_FALSE(fn->statements.empty()) << "No statements generated";
-  auto ret = dynamic_cast<ReturnStatement*>(fn->statements.back().get());
+  auto block = cast<BlockStatement>(fn->statements.get());
+  ASSERT_FALSE(block->statements.empty()) << "No statements generated";
+  auto ret = dynamic_cast<ReturnStatement*>(block->statements.back().get());
   ASSERT_NE(ret, nullptr)
       << "Return statemnt not generated in parse_statements";
 
-  fn->statements.pop_back();  // remove return statement
+  block->statements.pop_back();  // remove return statement
 
-  nodes = std::move(fn->statements);
+  nodes = std::move(block->statements);
 }
 
 auto check_simple_expression(const std::string& body, Node& node) -> void {

@@ -208,17 +208,21 @@ TEST(ParserTest, ParsesSimpleFunction) {
 
   auto one = cast<FunctionDeclaration>(nodes.at(0).get());
   ASSERT_EQ(one->name, "one");
-  ASSERT_EQ(one->statements.size(), 1);
 
-  auto ret_literal = cast<ReturnStatement>(one->statements.at(0).get());
+  auto stmts = cast<BlockStatement>(one->statements.get());
+  ASSERT_EQ(stmts->statements.size(), 1);
+
+  auto ret_literal = cast<ReturnStatement>(stmts->statements.at(0).get());
   auto int_val = cast<IntLiteralExpression>(ret_literal->expr.get());
   ASSERT_EQ(int_val->value, 1);
 
   auto main = cast<FunctionDeclaration>(nodes.at(1).get());
   ASSERT_EQ(main->name, "main");
-  ASSERT_EQ(main->statements.size(), 1);
 
-  auto ret_call = cast<ReturnStatement>(main->statements.at(0).get());
+  auto main_block = cast<BlockStatement>(main->statements.get());
+  ASSERT_EQ(main_block->statements.size(), 1);
+
+  auto ret_call = cast<ReturnStatement>(main_block->statements.at(0).get());
   auto func_call = cast<FunctionCallExpression>(ret_call->expr.get());
   ASSERT_EQ(func_call->name, "ret_one");
 }
@@ -257,4 +261,43 @@ TEST(ParserTest, ThrowsOnUnknownStatement) {
   } catch (ParseError& err) {
     EXPECT_THAT(err.what(), HasSubstr("Unexpected statement"));
   }
+}
+
+TEST(ParserTest, ParsesElseIfStatement) {
+  auto program = R"(
+    x = 5
+  
+    if x > 5
+      show 1 
+    elseif x < 5
+      show 2 
+    else
+      show 3 
+    end
+  )";
+
+  PARSE_STMTS(stmts, program);
+  ASSERT_EQ(stmts.size(), 2);
+
+  auto if_stmt = cast<IfStatement>(stmts.at(1).get());
+
+  ASSERT_NO_FATAL_FAILURE(cast<BinaryExpression>(if_stmt->condition.get()));
+
+  auto if_block = cast<BlockStatement>(if_stmt->if_then.get());
+  ASSERT_EQ(if_block->statements.size(), 1);
+
+  ASSERT_NO_FATAL_FAILURE(
+      cast<ShowStatement>(if_block->statements.at(0).get()));
+
+  auto if_else = cast<IfStatement>(if_stmt->if_else.get());
+
+  ASSERT_NO_FATAL_FAILURE(cast<BinaryExpression>(if_else->condition.get()));
+
+  auto if_else_block = cast<BlockStatement>(if_else->if_then.get());
+  ASSERT_EQ(if_else_block->statements.size(), 1);
+  cast<ShowStatement>(if_block->statements.at(0).get());
+
+  auto else_block = cast<BlockStatement>(if_else->if_else.get());
+  ASSERT_EQ(else_block->statements.size(), 1);
+  cast<ShowStatement>(if_block->statements.at(0).get());
 }

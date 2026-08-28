@@ -32,6 +32,7 @@ class CodegenVisitor : public Visitor {
   void visit(TypeExpression& stmt) override;
   void visit(IntLiteralExpression& stmt) override;
   void visit(IfStatement& stmt) override;
+  void visit(BlockStatement& block_stmt) override;
 
   auto emit(ASTNode& expr) -> llvm::Value*;
   void compile();

@@ -116,9 +116,7 @@ struct PrintVisitor : public Visitor {
     auto print_node = printer.add_node("FunctionDeclaration");
     printer.add_string_value(func.name);
 
-    for (const auto& stmt : func.statements) {
-      stmt->accept(*this);
-    }
+    func.statements->accept(*this);
   }
 
   void visit(FunctionCallExpression& call) override {
@@ -151,16 +149,19 @@ struct PrintVisitor : public Visitor {
     }
 
     {
-      auto if_then = printer.add_node("IfBody");
-
-      for (const auto& stmt : ifstmt.body) {
-        stmt->accept(*this);
-      }
+      auto if_then = printer.add_node("IfThen");
+      ifstmt.if_then->accept(*this);
     }
 
-    if (ifstmt.else_body.size()) {
-      auto else_then = printer.add_node("ElseBody");
-      for (const auto& stmt : ifstmt.else_body) stmt->accept(*this);
+    if (ifstmt.if_else) {
+      auto else_then = printer.add_node("IfElse");
+      ifstmt.if_else->accept(*this);
+    }
+  }
+
+  void visit(BlockStatement& block) override {
+    for (const auto& stmt : block.statements) {
+      stmt->accept(*this);
     }
   }
 };

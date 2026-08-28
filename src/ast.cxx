@@ -15,6 +15,7 @@ inline void ReturnStatement::accept(Visitor& v) { v.visit(*this); }
 inline void TypeExpression::accept(Visitor& v) { v.visit(*this); }
 inline void IntLiteralExpression::accept(Visitor& v) { v.visit(*this); }
 inline void IfStatement::accept(Visitor& v) { v.visit(*this); }
+inline void BlockStatement::accept(Visitor& v) { v.visit(*this); }
 
 auto get_type_id(const std::string& s) -> TypeId {
   auto it = builtin_types.find(s);

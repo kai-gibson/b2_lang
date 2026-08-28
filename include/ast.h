@@ -112,6 +112,7 @@ enum class NodeKind : uint8_t {
   TypeExpression,
   IntLiteralExpression,
   IfStatement,
+  BlockStatement,
 };
 
 /*
@@ -131,6 +132,15 @@ class ASTNode {
 
  private:
   NodeKind kind_;
+};
+
+struct BlockStatement : public ASTNode {
+  static constexpr NodeKind KIND = NodeKind::BlockStatement;
+  BlockStatement(SourceLocation source_location)
+      : ASTNode(source_location, KIND) {}
+
+  std::vector<std::unique_ptr<ASTNode>> statements;
+  void accept(Visitor& v) override;
 };
 
 struct FloatLiteralExpression : public ASTNode {
@@ -224,7 +234,7 @@ struct FunctionDeclaration : public ASTNode {
       : ASTNode(source_location, KIND), name(std::move(name)) {}
 
   std::string name;
-  std::vector<std::unique_ptr<ASTNode>> statements;
+  std::unique_ptr<ASTNode> statements;
   void accept(Visitor& v) override;
 };
 
@@ -284,8 +294,8 @@ struct IfStatement : public ASTNode {
       : ASTNode(source_location, KIND) {}
 
   std::unique_ptr<ASTNode> condition;
-  std::vector<std::unique_ptr<ASTNode>> body;
-  std::vector<std::unique_ptr<ASTNode>> else_body;
+  std::unique_ptr<ASTNode> if_then;
+  std::unique_ptr<ASTNode> if_else;
   void accept(Visitor& v) override;
 };
 

@@ -17,6 +17,7 @@ struct Visitor {
   virtual void visit(TypeExpression& expr) = 0;
   virtual void visit(IntLiteralExpression& expr) = 0;
   virtual void visit(IfStatement& expr) = 0;
+  virtual void visit(BlockStatement& expr) = 0;
 };
 
 #endif  // VISITOR_H

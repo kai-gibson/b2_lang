@@ -86,6 +86,7 @@ class TypeCheckVisitor {
   void visit_statement_fn_decl(FunctionDeclaration* fn);
   void visit_statement_var_decl(VariableDeclarationStatement* decl);
   void visit_statement_if(IfStatement* ifstmt);
+  void visit_statement_block_stmt(BlockStatement* elseifstmt);
   void visit_statement_var_assign(VariableAssignmentStatement* var);
   void visit_statement_show(ShowStatement* show);
   void visit_statement_return(ReturnStatement* ret);

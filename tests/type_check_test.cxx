@@ -260,3 +260,22 @@ TEST_P(CheckIntFitsTest, CheckSizedIntFits) {
     ASSERT_THAT(e.what(), HasSubstr("cannot fit"));
   }
 }
+
+TEST(TypeCheckTest, ThrowsWhenVariableOutOfScope) {
+  using ::testing::HasSubstr;
+  using ::testing::Not;
+
+  try {
+    CHECK_STMTS(stmts, R"(
+      x: Int64 = 10
+
+      if x > 5
+        y = x + 2
+      end
+
+      show y
+    )");
+  } catch (TypeError& e) {
+    ASSERT_THAT(e.what(), HasSubstr("Usage of undefined variable \"y\""));
+  }
+}

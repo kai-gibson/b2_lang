@@ -108,3 +108,20 @@ TEST(CodegenTest, GeneratesIfStatement) {
   RUN(output, program);
   ASSERT_EQ(output, 8);
 }
+
+TEST(CodegenTest, GeneratesElseIfStatement) {
+  auto program = R"(
+    x = 5
+  
+    if x > 5
+      show 1 
+    elseif x < 5
+      show 2 
+    else
+      show 3 
+    end
+  )";
+
+  RUN(output, program);
+  ASSERT_EQ(output, 3);
+}

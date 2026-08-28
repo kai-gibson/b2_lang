@@ -240,7 +240,7 @@ void CodegenVisitor::visit(FunctionDeclaration& func_declaration) {
   auto* entry = llvm::BasicBlock::Create(*llvm_context, "entry", func);
   llvm_builder->SetInsertPoint(entry);
 
-  for (auto& statement : func_declaration.statements) result = emit(*statement);
+  result = emit(*func_declaration.statements);
 }
 
 void CodegenVisitor::visit(ReturnStatement& ret) {
@@ -263,7 +263,7 @@ void CodegenVisitor::visit(FunctionCallExpression& funccall) {
 void CodegenVisitor::visit(IfStatement& if_stmt) {
   auto cond = emit(*if_stmt.condition);
 
-  if (if_stmt.else_body.size()) {
+  if (if_stmt.if_else) {
     auto* if_then =
         llvm::BasicBlock::Create(*llvm_context, "if.then", current_function);
 
@@ -276,17 +276,12 @@ void CodegenVisitor::visit(IfStatement& if_stmt) {
     llvm_builder->CreateCondBr(cond, if_then, if_else);
     llvm_builder->SetInsertPoint(if_then);
 
-    for (const auto& stmt : if_stmt.body) {
-      stmt->accept(*this);
-    }
+    if_stmt.if_then->accept(*this);
 
     llvm_builder->CreateBr(if_end);
-
     llvm_builder->SetInsertPoint(if_else);
 
-    for (const auto& stmt : if_stmt.else_body) {
-      stmt->accept(*this);
-    }
+    if_stmt.if_else->accept(*this);
 
     llvm_builder->CreateBr(if_end);
 
@@ -301,12 +296,16 @@ void CodegenVisitor::visit(IfStatement& if_stmt) {
     llvm_builder->CreateCondBr(cond, if_then, if_end);
     llvm_builder->SetInsertPoint(if_then);
 
-    for (const auto& stmt : if_stmt.body) {
-      stmt->accept(*this);
-    }
+    if_stmt.if_then->accept(*this);
 
     llvm_builder->CreateBr(if_end);
 
     llvm_builder->SetInsertPoint(if_end);
+  }
+}
+
+void CodegenVisitor::visit(BlockStatement& block) {
+  for (const auto& stmt : block.statements) {
+    stmt->accept(*this);
   }
 }

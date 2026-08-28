@@ -156,18 +156,20 @@ void TypeCheckVisitor::visit_statement_if(IfStatement* ifstmt) {
   auto expected = BOOL_TYPE;
   check_expr(ifstmt->condition.get(), expected);
 
+  visit_statement_node(ifstmt->if_then.get());
+
+  if (ifstmt->if_else) {
+    visit_statement_node(ifstmt->if_else.get());
+  }
+}
+
+void TypeCheckVisitor::visit_statement_block_stmt(BlockStatement* block) {
   variable_scope_stack.push();
-  for (auto& stmt : ifstmt->body) {
+
+  for (const auto& stmt : block->statements) {
     visit_statement_node(stmt.get());
   }
-  variable_scope_stack.pop();
 
-  variable_scope_stack.push();
-  if (ifstmt->else_body.size()) {
-    for (auto& stmt : ifstmt->else_body) {
-      visit_statement_node(stmt.get());
-    }
-  }
   variable_scope_stack.pop();
 }
 
@@ -193,9 +195,7 @@ void TypeCheckVisitor::visit_statement_program(Program* prog) {
 }
 
 void TypeCheckVisitor::visit_statement_fn_decl(FunctionDeclaration* fn) {
-  for (auto& stmt : fn->statements) {
-    visit_statement_node(stmt.get());
-  }
+  visit_statement_node(fn->statements.get());
 
   // all functions return Int32 for now
   function_map[fn->name] =
@@ -233,6 +233,9 @@ void TypeCheckVisitor::visit_statement_node(ASTNode* node) {
       break;
     case NodeKind::IfStatement:
       visit_statement_if(cast<IfStatement>(node));
+      break;
+    case NodeKind::BlockStatement:
+      visit_statement_block_stmt(cast<BlockStatement>(node));
       break;
     case NodeKind::FloatLiteralExpression:
     case NodeKind::BinaryExpression:
@@ -359,6 +362,7 @@ void TypeCheckVisitor::check_expr(ASTNode* node, Type& expected) {
       check_expr_float_literal(cast<FloatLiteralExpression>(node), expected);
       break;
 
+    case NodeKind::BlockStatement:
     case NodeKind::IfStatement:
     case NodeKind::ReturnStatement:
     case NodeKind::ShowStatement:
@@ -495,6 +499,7 @@ auto TypeCheckVisitor::infer_expr(ASTNode* node) -> Type {
       return infer_expr_float_literal(cast<FloatLiteralExpression>(node));
 
     case NodeKind::IfStatement:
+    case NodeKind::BlockStatement:
     case NodeKind::ReturnStatement:
     case NodeKind::ShowStatement:
     case NodeKind::VariableDeclarationStatement:

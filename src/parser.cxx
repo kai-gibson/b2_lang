@@ -24,6 +24,14 @@ auto precedence(TokenType t) -> int32_t {
   }
 }
 
+bool contains(const std::vector<TokenType>& terminators, TokenType token) {
+  for (const auto term : terminators) {
+    if (term == token) return true;
+  }
+
+  return false;
+}
+
 auto Parser::consume(TokenType expected) -> const Token& {
   if (peek().type != expected) {
     throw ParseError(peek().source_location, "Expected: {}, got: {}",
@@ -193,10 +201,7 @@ auto Parser::parse_function_declaration() -> std::unique_ptr<ASTNode> {
   consume(TokenType::LParen);
   consume(TokenType::RParen);
 
-  while (peek().type != TokenType::End) {
-    func->statements.push_back(parse_statement());
-  }
-
+  func->statements = parse_block_statement({TokenType::End});
   consume(TokenType::End);
 
   return std::move(func);
@@ -219,23 +224,51 @@ auto Parser::parse_return_statement() -> std::unique_ptr<ASTNode> {
                                            ret.source_location);
 }
 
+constexpr auto branches =
+    to_static_set({TokenType::Else, TokenType::ElseIf, TokenType::End});
+
+auto Parser::parse_if_body(std::vector<std::unique_ptr<ASTNode>>& body)
+    -> void {
+  while (!branches.contains(peek().type)) {
+    body.push_back(parse_statement());
+  }
+}
+
 auto Parser::parse_if_statement() -> std::unique_ptr<ASTNode> {
-  auto if_stmt = consume(TokenType::If);
-  auto if_statement = std::make_unique<IfStatement>(if_stmt.source_location);
-
-  if_statement->condition = parse_expression(0);
-
-  while (peek().type != TokenType::End && peek().type != TokenType::Else) {
-    if_statement->body.push_back(parse_statement());
+  SourceLocation begin;
+  if (peek().type == TokenType::If) {
+    begin = consume(TokenType::If).source_location;
+  } else if (peek().type == TokenType::ElseIf) {
+    begin = consume(TokenType::ElseIf).source_location;
   }
 
-  if (peek().type == TokenType::Else) {
+  auto if_stmt = std::make_unique<IfStatement>(begin);
+
+  if_stmt->condition = parse_expression(0);
+
+  if_stmt->if_then = parse_block_statement(IF_TERMINATORS);
+
+  if (peek().type == TokenType::ElseIf) {
+    if_stmt->if_else = parse_if_statement();
+  } else if (peek().type == TokenType::Else) {
     consume(TokenType::Else);
-    while (peek().type != TokenType::End && peek().type != TokenType::Else) {
-      if_statement->else_body.push_back(parse_statement());
-    }
+    if_stmt->if_else = parse_block_statement({TokenType::End});
   }
 
-  consume(TokenType::End);
-  return std::move(if_statement);
+  if (peek().type == TokenType::End) {
+    consume(TokenType::End);
+  }
+
+  return std::move(if_stmt);
+}
+
+auto Parser::parse_block_statement(const std::vector<TokenType>& terminators)
+    -> std::unique_ptr<ASTNode> {
+  auto block = std::make_unique<BlockStatement>(peek().source_location);
+
+  while (!contains(terminators, peek().type)) {
+    block->statements.push_back(parse_statement());
+  }
+
+  return std::move(block);
 }
