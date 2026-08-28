@@ -1,14 +1,11 @@
 func main() 
-  x = 10
+  x = 1
 
-  if x > 5
-    return 1
-  elseif x < 5
-    return 2
-  else 
-    return 3
+  loop if x > 5 break end
+
+    show x
+    set x = x + 1
   end
 
-  show 99
-  return 4
+  return x
 end

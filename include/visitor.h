@@ -18,6 +18,8 @@ struct Visitor {
   virtual void visit(IntLiteralExpression& expr) = 0;
   virtual void visit(IfStatement& expr) = 0;
   virtual void visit(BlockStatement& expr) = 0;
+  virtual void visit(LoopStatement& expr) = 0;
+  virtual void visit(BreakStatement& expr) = 0;
 };
 
 #endif  // VISITOR_H

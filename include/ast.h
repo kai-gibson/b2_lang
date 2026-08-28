@@ -113,6 +113,8 @@ enum class NodeKind : uint8_t {
   IntLiteralExpression,
   IfStatement,
   BlockStatement,
+  LoopStatement,
+  BreakStatement,
 };
 
 /*
@@ -296,6 +298,23 @@ struct IfStatement : public ASTNode {
   std::unique_ptr<ASTNode> condition;
   std::unique_ptr<ASTNode> if_then;
   std::unique_ptr<ASTNode> if_else;
+  void accept(Visitor& v) override;
+};
+
+struct LoopStatement : public ASTNode {
+  static constexpr NodeKind KIND = NodeKind::LoopStatement;
+  LoopStatement(SourceLocation source_location)
+      : ASTNode(source_location, KIND) {}
+
+  std::unique_ptr<ASTNode> body;
+  void accept(Visitor& v) override;
+};
+
+struct BreakStatement : public ASTNode {
+  static constexpr NodeKind KIND = NodeKind::BreakStatement;
+  BreakStatement(SourceLocation source_location)
+      : ASTNode(source_location, KIND) {}
+
   void accept(Visitor& v) override;
 };
 

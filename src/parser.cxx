@@ -186,6 +186,10 @@ auto Parser::parse_statement() -> std::unique_ptr<ASTNode> {
       return parse_return_statement();
     case TokenType::If:
       return parse_if_statement();
+    case TokenType::Loop:
+      return parse_loop();
+    case TokenType::Break:
+      return parse_break_statement();
     default:
       throw ParseError(peek().source_location, "Unexpected statement: {}",
                        token_type_to_str(peek().type));
@@ -271,4 +275,19 @@ auto Parser::parse_block_statement(const std::vector<TokenType>& terminators)
   }
 
   return std::move(block);
+}
+
+auto Parser::parse_loop() -> std::unique_ptr<ASTNode> {
+  auto loc = consume(TokenType::Loop).source_location;
+  auto loop = std::make_unique<LoopStatement>(loc);
+
+  loop->body = parse_block_statement({TokenType::End});
+  consume(TokenType::End);
+
+  return std::move(loop);
+}
+
+auto Parser::parse_break_statement() -> std::unique_ptr<ASTNode> {
+  auto loc = consume(TokenType::Break).source_location;
+  return std::make_unique<BreakStatement>(loc);
 }

@@ -237,6 +237,12 @@ void TypeCheckVisitor::visit_statement_node(ASTNode* node) {
     case NodeKind::BlockStatement:
       visit_statement_block_stmt(cast<BlockStatement>(node));
       break;
+    case NodeKind::LoopStatement:
+      visit_statement_loop(cast<LoopStatement>(node));
+      break;
+    case NodeKind::BreakStatement:
+      visit_statement_break(cast<BreakStatement>(node));
+      break;
     case NodeKind::FloatLiteralExpression:
     case NodeKind::BinaryExpression:
     case NodeKind::VariableExpression:
@@ -362,6 +368,8 @@ void TypeCheckVisitor::check_expr(ASTNode* node, Type& expected) {
       check_expr_float_literal(cast<FloatLiteralExpression>(node), expected);
       break;
 
+    case NodeKind::BreakStatement:
+    case NodeKind::LoopStatement:
     case NodeKind::BlockStatement:
     case NodeKind::IfStatement:
     case NodeKind::ReturnStatement:
@@ -498,6 +506,8 @@ auto TypeCheckVisitor::infer_expr(ASTNode* node) -> Type {
     case NodeKind::FloatLiteralExpression:
       return infer_expr_float_literal(cast<FloatLiteralExpression>(node));
 
+    case NodeKind::BreakStatement:
+    case NodeKind::LoopStatement:
     case NodeKind::IfStatement:
     case NodeKind::BlockStatement:
     case NodeKind::ReturnStatement:
@@ -508,5 +518,20 @@ auto TypeCheckVisitor::infer_expr(ASTNode* node) -> Type {
     case NodeKind::FunctionDeclaration:
       throw TypeError(node->source_location,
                       "Shouldn't ever call check on a statement...");
+  }
+}
+
+void TypeCheckVisitor::visit_statement_loop(LoopStatement* loop) {
+  loop_depth += 1;
+
+  visit_statement_node(loop->body.get());
+
+  loop_depth -= 1;
+}
+
+void TypeCheckVisitor::visit_statement_break(BreakStatement* brk) {
+  if (loop_depth == 0) {
+    throw TypeError(brk->source_location,
+                    "Break statement cannot appear outside a loop");
   }
 }

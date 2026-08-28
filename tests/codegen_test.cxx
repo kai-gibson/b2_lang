@@ -133,3 +133,21 @@ TEST(CodegenTest, GeneratesElseIfStatement) {
   RUN(output, program);
   ASSERT_EQ(output, 3);
 }
+
+TEST(CodegenTest, GeneratesLoopWithBreak) {
+  auto program = R"(
+    func main()
+      x = 1
+
+      loop 
+        set x = x + 1 
+        if x == 5 break end
+      end
+
+      return x
+    end
+  )";
+
+  RUN(output, program);
+  ASSERT_EQ(output, 5);
+}

@@ -37,6 +37,9 @@ enum class TokenType : int8_t {
   Else,
   Not,
   ElseIf,
+  Loop,
+  Break,
+  In,
   // EOF
   EndOfFile,
 };
@@ -72,6 +75,9 @@ constexpr auto TOKEN_TYPE_STR = to_static_map<TokenType, std::string_view>({
     {TokenType::Not, "Not"},
     {TokenType::ElseIf, "ElseIf"},
     {TokenType::EndOfFile, "EndOfFile"},
+    {TokenType::Loop, "Loop"},
+    {TokenType::Break, "Break"},
+    {TokenType::In, "In"},
 });
 
 constexpr auto KEYWORDS = to_static_map<std::string_view, TokenType>({
@@ -86,6 +92,9 @@ constexpr auto KEYWORDS = to_static_map<std::string_view, TokenType>({
     {"else", TokenType::Else},
     {"not", TokenType::Not},
     {"elseif", TokenType::ElseIf},
+    {"loop", TokenType::Loop},
+    {"break", TokenType::Break},
+    {"in", TokenType::In},
 });
 
 constexpr auto SYMBOLS = to_static_map<std::string_view, TokenType>({

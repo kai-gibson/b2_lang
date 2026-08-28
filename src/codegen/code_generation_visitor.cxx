@@ -321,3 +321,28 @@ void CodegenVisitor::visit(BlockStatement& block) {
     result = emit(*stmt);
   }
 }
+
+void CodegenVisitor::visit(LoopStatement& loop) {
+  auto loop_body =
+      llvm::BasicBlock::Create(*llvm_context, "loop.body", current_function);
+  auto loop_end =
+      llvm::BasicBlock::Create(*llvm_context, "loop.end", current_function);
+  current_loop_end = loop_end;
+
+  llvm_builder->CreateBr(loop_body);
+  llvm_builder->SetInsertPoint(loop_body);
+
+  loop.body->accept(*this);
+
+  // reset to start of loop body
+  llvm_builder->CreateBr(loop_body);
+
+  llvm_builder->SetInsertPoint(loop_end);
+}
+
+void CodegenVisitor::visit(BreakStatement& brk) {
+  if (current_loop_end == nullptr) {
+    throw std::runtime_error("Break codegen hit without loop");
+  }
+  llvm_builder->CreateBr(current_loop_end);
+}

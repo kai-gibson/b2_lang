@@ -90,6 +90,8 @@ class TypeCheckVisitor {
   void visit_statement_var_assign(VariableAssignmentStatement* var);
   void visit_statement_show(ShowStatement* show);
   void visit_statement_return(ReturnStatement* ret);
+  void visit_statement_loop(LoopStatement* loop);
+  void visit_statement_break(BreakStatement* brk);
 
   void check_expr(ASTNode* node, Type& expected);
   void check_expr_int_literal(IntLiteralExpression* node, Type& expected);
@@ -119,6 +121,7 @@ class TypeCheckVisitor {
   VariableScopeStack variable_scope_stack;
   std::unordered_map<std::string, Type> function_map;
   FunctionDeclaration* current_function{};
+  uint32_t loop_depth;
 };
 
 #endif  // TYPE_CHECK_VISITOR_H

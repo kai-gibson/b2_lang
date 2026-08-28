@@ -164,6 +164,16 @@ struct PrintVisitor : public Visitor {
       stmt->accept(*this);
     }
   }
+
+  void visit(LoopStatement& loop) override {
+    auto loop_stmt = printer.add_node("Loop");
+
+    loop.body->accept(*this);
+  }
+
+  void visit(BreakStatement& loop) override {
+    auto loop_stmt = printer.add_node("Break");
+  }
 };
 
 #endif  // PRINT_VISITOR_H

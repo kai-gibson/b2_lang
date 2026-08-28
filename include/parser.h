@@ -59,6 +59,8 @@ class Parser {
       -> std::unique_ptr<ASTNode>;
 
   auto parse_if_body(std::vector<std::unique_ptr<ASTNode>>& body) -> void;
+  auto parse_loop() -> std::unique_ptr<ASTNode>;
+  auto parse_break_statement() -> std::unique_ptr<ASTNode>;
 
   // vars
   const Tokens& tokens;
