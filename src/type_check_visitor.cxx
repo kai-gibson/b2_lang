@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "ast.h"
 #include "compile_error.h"
 #include "lexer.h"
 #include "parser.h"
@@ -469,6 +470,7 @@ auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
   auto right = infer_expr(node->rhs.get());
 
   Type operand_type, resolved_type;
+
   if (is_literal(left) || is_literal(right)) {
     operand_type = resolve_literal_pair(node, left, right);
   }
@@ -489,8 +491,16 @@ auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
 
       check_expr(node->lhs.get(), operand_type);
       check_expr(node->rhs.get(), operand_type);
+    } else {
+
+      operand_type = left;
     }
+
+
   } else {
+      if (operand_type.type_id == TypeId::Sentinel) {
+        operand_type = left;
+      }
     resolved_type = operand_type;
   }
 

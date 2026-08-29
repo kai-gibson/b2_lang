@@ -30,6 +30,7 @@ enum class TypeId : uint8_t {
   IntLiteral,
   FloatLiteral,
   UserDefined,
+  Sentinel,
 };
 
 const std::unordered_map<std::string, TypeId> builtin_types = {
@@ -64,12 +65,13 @@ const std::unordered_map<TypeId, std::string> type_id_str_map = {
     {TypeId::Float64, "Float64"},
     {TypeId::String, "String"},
     {TypeId::UserDefined, "UserDefined"},
+    {TypeId::Sentinel, "Sentinel"},
 };
 
 auto type_id_to_str(TypeId type_id) -> std::string;
 
 struct Type {
-  TypeId type_id;
+  TypeId type_id= TypeId::Sentinel;
   std::string identifier;
 };
 

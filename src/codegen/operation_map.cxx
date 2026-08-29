@@ -1,6 +1,7 @@
 #include "codegen/operation_map.h"
 
 #include <format>
+#include "ast.h"
 
 auto build_type_operations(Type type, llvm::IRBuilder<>& builder)
     -> std::unique_ptr<TypeOperations> {
@@ -25,12 +26,15 @@ auto build_type_operations(Type type, llvm::IRBuilder<>& builder)
     case TypeId::FloatLiteral:
       throw std::runtime_error(
           "Literal types should not exist by codegen time.");
-
+    case TypeId::Sentinel:
+          throw std::runtime_error(
+          "Uninitialised type ID found.. This is bad");
     case TypeId::Bool:
     case TypeId::String:
     case TypeId::UserDefined:
       throw std::runtime_error(std::format(
           "Datatype {} operations not implemented", type.identifier));
+
   }
 }
 

@@ -13,8 +13,25 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
 
+#include <optional>
+
 #include "ast.h"
 #include "visitor.h"
+
+struct LoopBlocks {
+  llvm::BasicBlock* body = nullptr;
+  llvm::BasicBlock* end = nullptr;
+};
+
+class LoopBlockStack {
+ public:
+  auto push(LoopBlocks loop_blocks) -> void;
+  auto pop() -> void;
+  auto back() -> std::optional<LoopBlocks>;
+
+ private:
+  std::vector<LoopBlocks> _loop_stack;
+};
 
 class CodegenVisitor : public Visitor {
  public:
@@ -48,8 +65,8 @@ class CodegenVisitor : public Visitor {
 
   std::unordered_map<std::string, llvm::Value*> named_values;
   llvm::Function* current_function = nullptr;
-  llvm::BasicBlock* current_loop_end = nullptr;
-  llvm::BasicBlock* current_loop_body = nullptr;
+
+  LoopBlockStack loop_block_stack;
 
  private:
   llvm::Value* result;

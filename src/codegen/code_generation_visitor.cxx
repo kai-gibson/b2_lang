@@ -4,9 +4,24 @@
 #include <llvm/IR/Verifier.h>
 
 #include <fstream>
+#include <optional>
 
 #include "codegen/operation_map.h"
 #include "compiler.h"
+
+auto LoopBlockStack::push(LoopBlocks loop_blocks) -> void {
+  _loop_stack.emplace_back(loop_blocks);
+}
+
+auto LoopBlockStack::pop() -> void { _loop_stack.pop_back(); }
+
+auto LoopBlockStack::back() -> std::optional<LoopBlocks> {
+  if (_loop_stack.size() > 0) {
+    return std::optional<LoopBlocks>{_loop_stack.back()};
+  } else {
+    return std::nullopt;
+  }
+}
 
 CodegenVisitor::CodegenVisitor() {
   llvm_context = std::make_unique<llvm::LLVMContext>();
@@ -53,7 +68,10 @@ auto CodegenVisitor::get_llvm_type(Type& type) -> llvm::Type* {
     case TypeId::String:
     case TypeId::UserDefined:
       throw std::runtime_error(
-          std::format("Datatype {} not implemented", type.identifier));
+          std::format("LLVMTYPE Datatype {} not implemented", type.identifier));
+    case TypeId::Sentinel:
+      throw std::runtime_error(
+          std::format("Found a defaulted type ID... track this down", type.identifier));
     case TypeId::IntLiteral:
     case TypeId::FloatLiteral:
       throw std::runtime_error(std::format(
@@ -327,8 +345,7 @@ void CodegenVisitor::visit(LoopStatement& loop) {
       llvm::BasicBlock::Create(*llvm_context, "loop.body", current_function);
   auto loop_end =
       llvm::BasicBlock::Create(*llvm_context, "loop.end", current_function);
-  current_loop_end = loop_end;
-  current_loop_body = loop_body;
+  loop_block_stack.push(LoopBlocks{.body = loop_body, .end = loop_end});
 
   llvm_builder->CreateBr(loop_body);
   llvm_builder->SetInsertPoint(loop_body);
@@ -339,18 +356,22 @@ void CodegenVisitor::visit(LoopStatement& loop) {
   llvm_builder->CreateBr(loop_body);
 
   llvm_builder->SetInsertPoint(loop_end);
+
+  loop_block_stack.pop();
 }
 
 void CodegenVisitor::visit(BreakStatement& brk) {
-  if (current_loop_end == nullptr) {
+  auto current_loop_block = loop_block_stack.back();
+  if (!current_loop_block.has_value()) {
     throw std::runtime_error("Break codegen hit without loop");
   }
-  llvm_builder->CreateBr(current_loop_end);
+  llvm_builder->CreateBr(current_loop_block->end);
 }
 
 void CodegenVisitor::visit(CycleStatement& cycle) {
-  if (current_loop_end == nullptr) {
-    throw std::runtime_error("Break codegen hit without loop");
+  auto current_loop_block = loop_block_stack.back();
+  if (!current_loop_block.has_value()) {
+    throw std::runtime_error("Cycle codegen hit without loop");
   }
-  llvm_builder->CreateBr(current_loop_body);
+  llvm_builder->CreateBr(current_loop_block->body);
 }
