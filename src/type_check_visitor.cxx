@@ -370,17 +370,26 @@ void TypeCheckVisitor::check_expr(ASTNode* node, Type& expected) {
     case NodeKind::FloatLiteralExpression:
       check_expr_float_literal(cast<FloatLiteralExpression>(node), expected);
       break;
-
     case NodeKind::CycleStatement:
+      [[fallthrough]];
     case NodeKind::BreakStatement:
+      [[fallthrough]];
     case NodeKind::LoopStatement:
+      [[fallthrough]];
     case NodeKind::BlockStatement:
+      [[fallthrough]];
     case NodeKind::IfStatement:
+      [[fallthrough]];
     case NodeKind::ReturnStatement:
+      [[fallthrough]];
     case NodeKind::ShowStatement:
+      [[fallthrough]];
     case NodeKind::VariableDeclarationStatement:
+      [[fallthrough]];
     case NodeKind::VariableAssignmentStatement:
+      [[fallthrough]];
     case NodeKind::Program:
+      [[fallthrough]];
     case NodeKind::FunctionDeclaration:
       throw TypeError(node->source_location,
                       "Shouldn't ever call check on a statement...");
@@ -511,15 +520,25 @@ auto TypeCheckVisitor::infer_expr(ASTNode* node) -> Type {
       return infer_expr_float_literal(cast<FloatLiteralExpression>(node));
 
     case NodeKind::CycleStatement:
+      [[fallthrough]];
     case NodeKind::BreakStatement:
+      [[fallthrough]];
     case NodeKind::LoopStatement:
+      [[fallthrough]];
     case NodeKind::IfStatement:
+      [[fallthrough]];
     case NodeKind::BlockStatement:
+      [[fallthrough]];
     case NodeKind::ReturnStatement:
+      [[fallthrough]];
     case NodeKind::ShowStatement:
+      [[fallthrough]];
     case NodeKind::VariableDeclarationStatement:
+      [[fallthrough]];
     case NodeKind::VariableAssignmentStatement:
+      [[fallthrough]];
     case NodeKind::Program:
+      [[fallthrough]];
     case NodeKind::FunctionDeclaration:
       throw TypeError(node->source_location,
                       "Shouldn't ever call check on a statement...");

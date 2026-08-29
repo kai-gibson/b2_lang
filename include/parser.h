@@ -7,7 +7,6 @@
 
 #include "ast.h"
 #include "lexer.h"
-#include "utils/container.h"
 
 constexpr auto is_builtin_type(std::string_view target) -> bool {
   constexpr std::array builtin_types = {
@@ -58,7 +57,6 @@ class Parser {
   auto parse_block_statement(const std::vector<TokenType>& terminators)
       -> std::unique_ptr<ASTNode>;
 
-  auto parse_if_body(std::vector<std::unique_ptr<ASTNode>>& body) -> void;
   auto parse_loop() -> std::unique_ptr<ASTNode>;
   auto parse_break_statement() -> std::unique_ptr<ASTNode>;
   auto parse_cycle_statement() -> std::unique_ptr<ASTNode>;

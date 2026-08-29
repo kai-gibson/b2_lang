@@ -230,16 +230,6 @@ auto Parser::parse_return_statement() -> std::unique_ptr<ASTNode> {
                                            ret.source_location);
 }
 
-constexpr auto branches =
-    to_static_set({TokenType::Else, TokenType::ElseIf, TokenType::End});
-
-auto Parser::parse_if_body(std::vector<std::unique_ptr<ASTNode>>& body)
-    -> void {
-  while (!branches.contains(peek().type)) {
-    body.push_back(parse_statement());
-  }
-}
-
 auto Parser::parse_if_statement() -> std::unique_ptr<ASTNode> {
   SourceLocation begin;
   if (peek().type == TokenType::If) {
