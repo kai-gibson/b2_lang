@@ -328,6 +328,7 @@ void CodegenVisitor::visit(LoopStatement& loop) {
   auto loop_end =
       llvm::BasicBlock::Create(*llvm_context, "loop.end", current_function);
   current_loop_end = loop_end;
+  current_loop_body = loop_body;
 
   llvm_builder->CreateBr(loop_body);
   llvm_builder->SetInsertPoint(loop_body);
@@ -345,4 +346,11 @@ void CodegenVisitor::visit(BreakStatement& brk) {
     throw std::runtime_error("Break codegen hit without loop");
   }
   llvm_builder->CreateBr(current_loop_end);
+}
+
+void CodegenVisitor::visit(CycleStatement& cycle) {
+  if (current_loop_end == nullptr) {
+    throw std::runtime_error("Break codegen hit without loop");
+  }
+  llvm_builder->CreateBr(current_loop_body);
 }

@@ -40,6 +40,7 @@ enum class TokenType : int8_t {
   Loop,
   Break,
   In,
+  Cycle,
   // EOF
   EndOfFile,
 };
@@ -78,6 +79,7 @@ constexpr auto TOKEN_TYPE_STR = to_static_map<TokenType, std::string_view>({
     {TokenType::Loop, "Loop"},
     {TokenType::Break, "Break"},
     {TokenType::In, "In"},
+    {TokenType::Cycle, "Cycle"},
 });
 
 constexpr auto KEYWORDS = to_static_map<std::string_view, TokenType>({
@@ -95,6 +97,7 @@ constexpr auto KEYWORDS = to_static_map<std::string_view, TokenType>({
     {"loop", TokenType::Loop},
     {"break", TokenType::Break},
     {"in", TokenType::In},
+    {"cycle", TokenType::Cycle},
 });
 
 constexpr auto SYMBOLS = to_static_map<std::string_view, TokenType>({

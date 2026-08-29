@@ -243,6 +243,9 @@ void TypeCheckVisitor::visit_statement_node(ASTNode* node) {
     case NodeKind::BreakStatement:
       visit_statement_break(cast<BreakStatement>(node));
       break;
+    case NodeKind::CycleStatement:
+      visit_statement_cycle(cast<CycleStatement>(node));
+      break;
     case NodeKind::FloatLiteralExpression:
     case NodeKind::BinaryExpression:
     case NodeKind::VariableExpression:
@@ -368,6 +371,7 @@ void TypeCheckVisitor::check_expr(ASTNode* node, Type& expected) {
       check_expr_float_literal(cast<FloatLiteralExpression>(node), expected);
       break;
 
+    case NodeKind::CycleStatement:
     case NodeKind::BreakStatement:
     case NodeKind::LoopStatement:
     case NodeKind::BlockStatement:
@@ -506,6 +510,7 @@ auto TypeCheckVisitor::infer_expr(ASTNode* node) -> Type {
     case NodeKind::FloatLiteralExpression:
       return infer_expr_float_literal(cast<FloatLiteralExpression>(node));
 
+    case NodeKind::CycleStatement:
     case NodeKind::BreakStatement:
     case NodeKind::LoopStatement:
     case NodeKind::IfStatement:
@@ -533,5 +538,12 @@ void TypeCheckVisitor::visit_statement_break(BreakStatement* brk) {
   if (loop_depth == 0) {
     throw TypeError(brk->source_location,
                     "Break statement cannot appear outside a loop");
+  }
+}
+
+void TypeCheckVisitor::visit_statement_cycle(CycleStatement* cycle) {
+  if (loop_depth == 0) {
+    throw TypeError(cycle->source_location,
+                    "Cycle statement cannot appear outside a loop");
   }
 }

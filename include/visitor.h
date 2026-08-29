@@ -20,6 +20,7 @@ struct Visitor {
   virtual void visit(BlockStatement& expr) = 0;
   virtual void visit(LoopStatement& expr) = 0;
   virtual void visit(BreakStatement& expr) = 0;
+  virtual void visit(CycleStatement& expr) = 0;
 };
 
 #endif  // VISITOR_H

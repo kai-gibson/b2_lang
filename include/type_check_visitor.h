@@ -92,6 +92,7 @@ class TypeCheckVisitor {
   void visit_statement_return(ReturnStatement* ret);
   void visit_statement_loop(LoopStatement* loop);
   void visit_statement_break(BreakStatement* brk);
+  void visit_statement_cycle(CycleStatement* cycle);
 
   void check_expr(ASTNode* node, Type& expected);
   void check_expr_int_literal(IntLiteralExpression* node, Type& expected);

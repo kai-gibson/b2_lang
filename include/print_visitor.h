@@ -174,6 +174,10 @@ struct PrintVisitor : public Visitor {
   void visit(BreakStatement& loop) override {
     auto loop_stmt = printer.add_node("Break");
   }
+
+  void visit(CycleStatement& cycle) override {
+    auto loop_stmt = printer.add_node("Cycle");
+  }
 };
 
 #endif  // PRINT_VISITOR_H

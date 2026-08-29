@@ -35,6 +35,7 @@ class CodegenVisitor : public Visitor {
   void visit(BlockStatement& block_stmt) override;
   void visit(LoopStatement& loop) override;
   void visit(BreakStatement& brk) override;
+  void visit(CycleStatement& cycle) override;
 
   auto emit(ASTNode& expr) -> llvm::Value*;
   void compile();
@@ -48,6 +49,7 @@ class CodegenVisitor : public Visitor {
   std::unordered_map<std::string, llvm::Value*> named_values;
   llvm::Function* current_function = nullptr;
   llvm::BasicBlock* current_loop_end = nullptr;
+  llvm::BasicBlock* current_loop_body = nullptr;
 
  private:
   llvm::Value* result;

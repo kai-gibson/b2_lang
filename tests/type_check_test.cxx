@@ -279,3 +279,31 @@ TEST(TypeCheckTest, ThrowsWhenVariableOutOfScope) {
     ASSERT_THAT(e.what(), HasSubstr("Usage of undefined variable \"y\""));
   }
 }
+
+TEST(TypeCheckTest, ThrowsWhenCycleOutsideLoop) {
+  using ::testing::HasSubstr;
+  using ::testing::Not;
+
+  try {
+    CHECK_STMTS(stmts, R"(
+      cycle
+    )");
+  } catch (TypeError& e) {
+    ASSERT_THAT(e.what(),
+                HasSubstr("Cycle statement cannot appear outside a loop"));
+  }
+}
+
+TEST(TypeCheckTest, ThrowsWhenBreakOutsideLoop) {
+  using ::testing::HasSubstr;
+  using ::testing::Not;
+
+  try {
+    CHECK_STMTS(stmts, R"(
+      break
+    )");
+  } catch (TypeError& e) {
+    ASSERT_THAT(e.what(),
+                HasSubstr("Break statement cannot appear outside a loop"));
+  }
+}

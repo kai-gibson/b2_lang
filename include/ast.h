@@ -115,6 +115,7 @@ enum class NodeKind : uint8_t {
   BlockStatement,
   LoopStatement,
   BreakStatement,
+  CycleStatement,
 };
 
 /*
@@ -313,6 +314,14 @@ struct LoopStatement : public ASTNode {
 struct BreakStatement : public ASTNode {
   static constexpr NodeKind KIND = NodeKind::BreakStatement;
   BreakStatement(SourceLocation source_location)
+      : ASTNode(source_location, KIND) {}
+
+  void accept(Visitor& v) override;
+};
+
+struct CycleStatement : public ASTNode {
+  static constexpr NodeKind KIND = NodeKind::CycleStatement;
+  CycleStatement(SourceLocation source_location)
       : ASTNode(source_location, KIND) {}
 
   void accept(Visitor& v) override;
