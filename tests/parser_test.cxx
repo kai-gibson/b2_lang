@@ -301,3 +301,30 @@ TEST(ParserTest, ParsesElseIfStatement) {
   ASSERT_EQ(else_block->statements.size(), 1);
   cast<ShowStatement>(if_block->statements.at(0).get());
 }
+
+TEST(ParserTest, ParsesLoopStatement) {
+  auto program = R"(
+    x = 1
+
+    loop 
+      set x = x + 1
+      if x == 5 break end
+    end
+
+    return x
+  )";
+
+  PARSE_STMTS(stmts, program);
+  ASSERT_EQ(stmts.size(), 3);
+
+  auto loop = cast<LoopStatement>(stmts.at(1).get());
+  auto block = cast<BlockStatement>(loop->body.get());
+
+  ASSERT_EQ(block->statements.size(), 2);
+
+  auto assign =
+      cast<VariableAssignmentStatement>(block->statements.at(0).get());
+  ASSERT_EQ(assign->name, "x");
+
+  ASSERT_NO_FATAL_FAILURE(cast<IfStatement>(block->statements.at(1).get()));
+}

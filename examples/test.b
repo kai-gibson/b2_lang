@@ -1,10 +1,9 @@
 func main() 
   x = 1
 
-  loop if x > 5 break end
-
-    show x
+  loop 
     set x = x + 1
+    if x = 5 break end
   end
 
   return x
