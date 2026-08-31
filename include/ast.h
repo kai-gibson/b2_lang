@@ -71,7 +71,7 @@ const std::unordered_map<TypeId, std::string> type_id_str_map = {
 auto type_id_to_str(TypeId type_id) -> std::string;
 
 struct Type {
-  TypeId type_id= TypeId::Sentinel;
+  TypeId type_id = TypeId::Sentinel;
   std::string identifier;
 };
 
