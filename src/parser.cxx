@@ -131,6 +131,19 @@ auto Parser::parse_expression(int32_t min_precedence)
 }
 
 auto Parser::parse_type_expression() -> std::unique_ptr<ASTNode> {
+  auto token = peek();
+  switch (token.type) {
+    case TokenType::Asterisk:
+      return parse_pointer_type_expression();
+    case TokenType::Identifier:
+      return parse_identifier_type_expression();
+    default:
+      throw ParseError(token.source_location, "Invalid type expression {}",
+                       token.value);
+  }
+}
+
+auto Parser::parse_identifier_type_expression() -> std::unique_ptr<ASTNode> {
   auto [_, name, source_location] = consume(TokenType::Identifier);
 
   if (!is_builtin_type(name)) {
@@ -138,6 +151,15 @@ auto Parser::parse_type_expression() -> std::unique_ptr<ASTNode> {
   }
 
   return std::make_unique<TypeExpression>(name, source_location);
+}
+
+auto Parser::parse_pointer_type_expression() -> std::unique_ptr<ASTNode> {
+  auto asterisk_token = consume(TokenType::Asterisk);
+  auto pointer_type =
+      std::make_unique<PointerTypeExpression>(asterisk_token.source_location);
+
+  pointer_type->base_type = parse_type_expression();
+  return std::move(pointer_type);
 }
 
 auto Parser::parse_variable_declaration() -> std::unique_ptr<ASTNode> {

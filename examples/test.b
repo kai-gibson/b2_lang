@@ -1,16 +1,13 @@
 func main() 
-  x = 1
-  y = 1
+  x = 0
 
-  loop 
-    set x = x + 1
-    if x >= 5 break end
+  loop
+    set x = x + 1    
+    
+    show x
 
-    loop 
-      set y = y + 1
-      if x == y break end
-    end
+    if x == 10 break end
   end
 
-  return y + x
+  return x
 end

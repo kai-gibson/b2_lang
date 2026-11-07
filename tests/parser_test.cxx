@@ -357,3 +357,13 @@ TEST(ParserTest, ParsesLoopWithCycleStatement) {
   ASSERT_NO_FATAL_FAILURE(
       cast<CycleStatement>(if_block->statements.at(0).get()));
 }
+
+TEST(ParserTest, ParsesPointerTypeDecl) {
+  PARSE_EXPR(node, "pointer: *Int32");
+
+  auto assign = cast<VariableDeclarationStatement>(node.get());
+  auto pointer_t = cast<PointerTypeExpression>(assign->type_identifier.get());
+  auto type_id = cast<TypeExpression>(pointer_t->type_identifier.get());
+
+  ASSERT_EQ(type_id->name, "Int32");
+}

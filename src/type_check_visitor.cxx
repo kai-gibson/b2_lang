@@ -252,6 +252,7 @@ void TypeCheckVisitor::visit_statement_node(ASTNode* node) {
     case NodeKind::VariableExpression:
     case NodeKind::FunctionCallExpression:
     case NodeKind::TypeExpression:
+    case NodeKind::PointerTypeExpression:
     case NodeKind::IntLiteralExpression:
       throw TypeError(
           node->source_location,
@@ -282,6 +283,11 @@ void TypeCheckVisitor::check_expr_type_expr(TypeExpression* node,
   throw TypeError(node->source_location,
                   "Attempt to check Type expression {} against type {}",
                   node->name, expected.identifier);
+}
+
+void TypeCheckVisitor::check_expr_pointer_type_expr(PointerTypeExpression* node,
+                                                    Type& expected) {
+  check_expr(node->type_identifier.get(), expected);
 }
 
 void TypeCheckVisitor::check_expr_func_call(FunctionCallExpression* node,
@@ -358,6 +364,9 @@ void TypeCheckVisitor::check_expr(ASTNode* node, Type& expected) {
       break;
     case NodeKind::TypeExpression:
       check_expr_type_expr(cast<TypeExpression>(node), expected);
+      break;
+    case NodeKind::PointerTypeExpression:
+      check_expr_pointer_type_expr(cast<PointerTypeExpression>(node), expected);
       break;
     case NodeKind::FunctionCallExpression:
       check_expr_func_call(cast<FunctionCallExpression>(node), expected);
@@ -492,15 +501,13 @@ auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
       check_expr(node->lhs.get(), operand_type);
       check_expr(node->rhs.get(), operand_type);
     } else {
-
       operand_type = left;
     }
 
-
   } else {
-      if (operand_type.type_id == TypeId::Sentinel) {
-        operand_type = left;
-      }
+    if (operand_type.type_id == TypeId::Sentinel) {
+      operand_type = left;
+    }
     resolved_type = operand_type;
   }
 
@@ -520,6 +527,8 @@ auto TypeCheckVisitor::infer_expr(ASTNode* node) -> Type {
       return infer_expr_int_literal(cast<IntLiteralExpression>(node));
     case NodeKind::TypeExpression:
       return infer_expr_type_expr(cast<TypeExpression>(node));
+    case NodeKind::PointerTypeExpression:
+      return infer_expr_pointer_type_expr(cast<PointerTypeExpression>(node));
     case NodeKind::FunctionCallExpression:
       return infer_expr_func_call(cast<FunctionCallExpression>(node));
     case NodeKind::VariableExpression:

@@ -9,5 +9,5 @@ func main()
   int64: Int64 = 1231414244
   set int64 = int64 + 121463
 
-  return int16
+  return int32
 end

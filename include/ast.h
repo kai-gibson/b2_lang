@@ -112,6 +112,7 @@ enum class NodeKind : uint8_t {
   Program,
   ReturnStatement,
   TypeExpression,
+  PointerTypeExpression,
   IntLiteralExpression,
   IfStatement,
   BlockStatement,
@@ -279,6 +280,16 @@ struct TypeExpression : public ASTNode {
       : ASTNode(source_location, KIND), name(std::move(name)) {}
 
   std::string name;
+  void accept(Visitor& v) override;
+};
+
+struct PointerTypeExpression : public ASTNode {
+  static constexpr NodeKind KIND = NodeKind::PointerTypeExpression;
+
+  PointerTypeExpression(SourceLocation source_location)
+      : ASTNode(source_location, KIND) {}
+
+  std::unique_ptr<ASTNode> base_type;
   void accept(Visitor& v) override;
 };
 

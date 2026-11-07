@@ -51,6 +51,8 @@ class Parser {
   auto parse_function_declaration() -> std::unique_ptr<ASTNode>;
   auto parse_return_statement() -> std::unique_ptr<ASTNode>;
   auto parse_type_expression() -> std::unique_ptr<ASTNode>;
+  auto parse_identifier_type_expression() -> std::unique_ptr<ASTNode>;
+  auto parse_pointer_type_expression() -> std::unique_ptr<ASTNode>;
   auto parse_int_expression() -> std::unique_ptr<ASTNode>;
   auto parse_if_statement() -> std::unique_ptr<ASTNode>;
   auto parse_if() -> std::unique_ptr<ASTNode>;

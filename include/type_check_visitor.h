@@ -97,6 +97,8 @@ class TypeCheckVisitor {
   void check_expr(ASTNode* node, Type& expected);
   void check_expr_int_literal(IntLiteralExpression* node, Type& expected);
   void check_expr_type_expr(TypeExpression* node, Type& expected);
+  void check_expr_pointer_type_expr(PointerTypeExpression* node,
+                                    Type& expected);
   void check_expr_func_call(FunctionCallExpression* node, Type& expected);
   void check_expr_var_expr(VariableExpression* node, Type& expected);
   void check_expr_bin_expr(BinaryExpression* node, Type& expected);
@@ -105,6 +107,7 @@ class TypeCheckVisitor {
   auto infer_expr(ASTNode* node) -> Type;
   auto infer_expr_int_literal(IntLiteralExpression* node) -> Type;
   auto infer_expr_type_expr(TypeExpression* node) -> Type;
+  auto infer_expr_pointer_type_expr(PointerTypeExpression* node) -> Type;
   auto infer_expr_func_call(FunctionCallExpression* node) -> Type;
   auto infer_expr_var_expr(VariableExpression* node) -> Type;
   auto infer_expr_bin_expr(BinaryExpression* node) -> Type;

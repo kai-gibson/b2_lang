@@ -70,8 +70,8 @@ auto CodegenVisitor::get_llvm_type(Type& type) -> llvm::Type* {
       throw std::runtime_error(
           std::format("LLVMTYPE Datatype {} not implemented", type.identifier));
     case TypeId::Sentinel:
-      throw std::runtime_error(
-          std::format("Found a defaulted type ID... track this down", type.identifier));
+      throw std::runtime_error(std::format(
+          "Found a defaulted type ID... track this down", type.identifier));
     case TypeId::IntLiteral:
     case TypeId::FloatLiteral:
       throw std::runtime_error(std::format(
@@ -237,7 +237,6 @@ void CodegenVisitor::visit(Program& expr) {
 }
 
 void CodegenVisitor::visit(ShowStatement& stmt) {
-  std::cerr << "show stmt... " << stmt.source_location.line << "\n";
   auto* fmt = llvm_builder->CreateGlobalStringPtr("%d\n", "fmt");
 
   auto* printf_fn = llvm_module->getFunction("printf");
