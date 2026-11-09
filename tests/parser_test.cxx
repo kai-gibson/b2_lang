@@ -359,11 +359,11 @@ TEST(ParserTest, ParsesLoopWithCycleStatement) {
 }
 
 TEST(ParserTest, ParsesPointerTypeDecl) {
-  PARSE_EXPR(node, "pointer: *Int32");
+  PARSE_EXPR(node, "pointer: *Int32 = 0");
 
   auto assign = cast<VariableDeclarationStatement>(node.get());
   auto pointer_t = cast<PointerTypeExpression>(assign->type_identifier.get());
-  auto type_id = cast<TypeExpression>(pointer_t->type_identifier.get());
+  auto type_id = cast<TypeExpression>(pointer_t->base_type.get());
 
   ASSERT_EQ(type_id->name, "Int32");
 }

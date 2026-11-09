@@ -35,6 +35,7 @@ constexpr auto VALID_SYMBOLS = std::to_array({
     '{',
     '}',
     '!',
+    '*',
 });
 
 TEST(IsSymbolCharTest, FailsOnInvalidSymbols) {

@@ -1,40 +1,43 @@
 #include "codegen/operation_map.h"
 
 #include <format>
-#include "ast.h"
 
-auto build_type_operations(Type type, llvm::IRBuilder<>& builder)
+auto build_type_operations(std::unique_ptr<Type>& type,
+                           llvm::IRBuilder<>& builder)
     -> std::unique_ptr<TypeOperations> {
-  switch (type.type_id) {
-    case TypeId::Int8:
-    case TypeId::Int16:
-    case TypeId::Int32:
-    case TypeId::Int64:
+  if (type == nullptr) {
+    throw std::runtime_error("Uninitialised type ID found.. This is bad");
+  }
+
+  switch (type->kind()) {
+    case TypeKind::Int8:
+    case TypeKind::Int16:
+    case TypeKind::Int32:
+    case TypeKind::Int64:
       return std::make_unique<IntOperations>(builder, true);
 
-    case TypeId::UInt8:
-    case TypeId::UInt16:
-    case TypeId::UInt32:
-    case TypeId::UInt64:
+    case TypeKind::UInt8:
+    case TypeKind::UInt16:
+    case TypeKind::UInt32:
+    case TypeKind::UInt64:
       return std::make_unique<IntOperations>(builder, false);
 
-    case TypeId::Float32:
-    case TypeId::Float64:
+    case TypeKind::Float32:
+    case TypeKind::Float64:
       return std::make_unique<FloatOperations>(builder);
 
-    case TypeId::IntLiteral:
-    case TypeId::FloatLiteral:
+    case TypeKind::IntLiteral:
+    case TypeKind::FloatLiteral:
       throw std::runtime_error(
           "Literal types should not exist by codegen time.");
-    case TypeId::Sentinel:
-          throw std::runtime_error(
-          "Uninitialised type ID found.. This is bad");
-    case TypeId::Bool:
-    case TypeId::String:
-    case TypeId::UserDefined:
+    case TypeKind::Bool:
+    case TypeKind::String:
+    case TypeKind::Array:
+    case TypeKind::Slice:
+    case TypeKind::Pointer:
+    case TypeKind::Product:
       throw std::runtime_error(std::format(
-          "Datatype {} operations not implemented", type.identifier));
-
+          "Datatype {} operations not implemented", type->kind_name()));
   }
 }
 

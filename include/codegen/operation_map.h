@@ -4,7 +4,8 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
 
-#include "ast.h"
+#include "token_type.h"
+#include "types.h"
 
 class TypeOperations {
  public:
@@ -64,7 +65,8 @@ class BoolOperations : public TypeOperations {
  private:
 };
 
-auto build_type_operations(Type type, llvm::IRBuilder<>& builder)
+auto build_type_operations(std::unique_ptr<Type>& type,
+                           llvm::IRBuilder<>& builder)
     -> std::unique_ptr<TypeOperations>;
 
 #endif  // OPERATOR_MAP_H

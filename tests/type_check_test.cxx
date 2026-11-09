@@ -9,14 +9,15 @@ namespace mp = boost::multiprecision;
 #include "ast.h"
 #include "compile_error.h"
 #include "node.h"
+#include "types.h"
 
 TEST(TypeCheckTest, InfersInt32FromLiteralDecl) {
   CHECK_EXPR(root, "x = 12");
 
   auto stmt = cast<VariableDeclarationStatement>(root.get());
 
-  ASSERT_TRUE(stmt->declaration_type.has_value());
-  ASSERT_EQ(stmt->declaration_type->type_id, TypeId::Int32);
+  ASSERT_NE(stmt->declaration_type, nullptr);
+  ASSERT_EQ(stmt->declaration_type->kind(), TypeKind::Int32);
 }
 
 TEST(TypeCheckTest, InfersInt32FromLiteralRet) {
@@ -24,8 +25,8 @@ TEST(TypeCheckTest, InfersInt32FromLiteralRet) {
 
   auto stmt = cast<ReturnStatement>(root.get());
 
-  ASSERT_TRUE(stmt->expr_type.has_value());
-  ASSERT_EQ(stmt->expr_type->type_id, TypeId::Int32);
+  ASSERT_NE(stmt->expr_type, nullptr);
+  ASSERT_EQ(stmt->expr_type->kind(), TypeKind::Int32);
 }
 
 TEST(TypeCheckTest, InfersInt32FromLiteralShow) {
@@ -33,8 +34,8 @@ TEST(TypeCheckTest, InfersInt32FromLiteralShow) {
 
   auto stmt = cast<ShowStatement>(root.get());
 
-  ASSERT_TRUE(stmt->expr_type.has_value());
-  ASSERT_EQ(stmt->expr_type->type_id, TypeId::Int32);
+  ASSERT_NE(stmt->expr_type, nullptr);
+  ASSERT_EQ(stmt->expr_type->kind(), TypeKind::Int32);
 }
 
 TEST(TypeCheckTest, InfersFloat64FromLiteralDecl) {
@@ -42,8 +43,8 @@ TEST(TypeCheckTest, InfersFloat64FromLiteralDecl) {
 
   auto stmt = cast<VariableDeclarationStatement>(root.get());
 
-  ASSERT_TRUE(stmt->declaration_type.has_value());
-  ASSERT_EQ(stmt->declaration_type->type_id, TypeId::Float64);
+  ASSERT_NE(stmt->declaration_type, nullptr);
+  ASSERT_EQ(stmt->declaration_type->kind(), TypeKind::Float64);
 }
 
 TEST(TypeCheckTest, InfersFloat64FromLiteralRet) {
@@ -51,8 +52,8 @@ TEST(TypeCheckTest, InfersFloat64FromLiteralRet) {
 
   auto stmt = cast<ReturnStatement>(root.get());
 
-  ASSERT_TRUE(stmt->expr_type.has_value());
-  ASSERT_EQ(stmt->expr_type->type_id, TypeId::Float64);
+  ASSERT_NE(stmt->expr_type, nullptr);
+  ASSERT_EQ(stmt->expr_type->kind(), TypeKind::Float64);
 }
 
 TEST(TypeCheckTest, InfersFloat64FromLiteralShow) {
@@ -60,8 +61,8 @@ TEST(TypeCheckTest, InfersFloat64FromLiteralShow) {
 
   auto stmt = cast<ShowStatement>(root.get());
 
-  ASSERT_TRUE(stmt->expr_type.has_value());
-  ASSERT_EQ(stmt->expr_type->type_id, TypeId::Float64);
+  ASSERT_NE(stmt->expr_type, nullptr);
+  ASSERT_EQ(stmt->expr_type->kind(), TypeKind::Float64);
 }
 
 TEST(TypeCheckTest, InfersInt64FromLiteralBinaryExpr) {
@@ -70,17 +71,17 @@ TEST(TypeCheckTest, InfersInt64FromLiteralBinaryExpr) {
   ASSERT_EQ(stmts.size(), 2);
 
   auto decl = cast<VariableDeclarationStatement>(stmts.at(0).get());
-  ASSERT_TRUE(decl->declaration_type.has_value());
-  ASSERT_EQ(decl->declaration_type->type_id, TypeId::Int64);
+  ASSERT_NE(decl->declaration_type, nullptr);
+  ASSERT_EQ(decl->declaration_type->kind(), TypeKind::Int64);
 
   auto y_decl = cast<VariableDeclarationStatement>(stmts.at(1).get());
-  ASSERT_TRUE(y_decl->declaration_type.has_value());
-  ASSERT_EQ(y_decl->declaration_type->type_id, TypeId::Int64);
+  ASSERT_NE(y_decl->declaration_type, nullptr);
+  ASSERT_EQ(y_decl->declaration_type->kind(), TypeKind::Int64);
 }
 
 struct ExplicitTypeRecord {
   std::string code;
-  TypeId expected;
+  TypeKind expected;
 };
 
 class CheckExplicitTypeTest
@@ -89,20 +90,23 @@ class CheckExplicitTypeTest
 INSTANTIATE_TEST_SUITE_P(
     ChecksExplicitType, CheckExplicitTypeTest,
     testing::Values(
-        ExplicitTypeRecord{.code = "x:Int8 = 12", .expected = TypeId::Int8},
-        ExplicitTypeRecord{.code = "x:Int16 = 12", .expected = TypeId::Int16},
-        ExplicitTypeRecord{.code = "x:Int32 = 12", .expected = TypeId::Int32},
-        ExplicitTypeRecord{.code = "x:Int64 = 12", .expected = TypeId::Int64},
-        ExplicitTypeRecord{.code = "x:UInt8 = 12", .expected = TypeId::UInt8},
-        ExplicitTypeRecord{.code = "x:UInt16 = 12", .expected = TypeId::UInt16},
-        ExplicitTypeRecord{.code = "x:UInt32 = 12", .expected = TypeId::UInt32},
-        ExplicitTypeRecord{.code = "x:UInt64 = 12", .expected = TypeId::UInt64},
+        ExplicitTypeRecord{.code = "x:Int8 = 12", .expected = TypeKind::Int8},
+        ExplicitTypeRecord{.code = "x:Int16 = 12", .expected = TypeKind::Int16},
+        ExplicitTypeRecord{.code = "x:Int32 = 12", .expected = TypeKind::Int32},
+        ExplicitTypeRecord{.code = "x:Int64 = 12", .expected = TypeKind::Int64},
+        ExplicitTypeRecord{.code = "x:UInt8 = 12", .expected = TypeKind::UInt8},
+        ExplicitTypeRecord{.code = "x:UInt16 = 12",
+                           .expected = TypeKind::UInt16},
+        ExplicitTypeRecord{.code = "x:UInt32 = 12",
+                           .expected = TypeKind::UInt32},
+        ExplicitTypeRecord{.code = "x:UInt64 = 12",
+                           .expected = TypeKind::UInt64},
         ExplicitTypeRecord{.code = "x:Float32 = 12.123",
-                           .expected = TypeId::Float32},
+                           .expected = TypeKind::Float32},
         ExplicitTypeRecord{.code = "x:Float64 = 12.123",
-                           .expected = TypeId::Float64}),
+                           .expected = TypeKind::Float64}),
     ([](const testing::TestParamInfo<ExplicitTypeRecord>& info) -> std::string {
-      return type_id_to_str(info.param.expected);
+      return std::string(type_kind_to_str(info.param.expected));
     }));
 
 TEST_P(CheckExplicitTypeTest, ChecksExplicitType) {
@@ -110,33 +114,33 @@ TEST_P(CheckExplicitTypeTest, ChecksExplicitType) {
 
   auto stmt = cast<VariableDeclarationStatement>(root.get());
 
-  ASSERT_TRUE(stmt->declaration_type.has_value());
-  ASSERT_EQ(stmt->declaration_type->type_id, GetParam().expected);
+  ASSERT_NE(stmt->declaration_type, nullptr);
+  ASSERT_EQ(stmt->declaration_type->kind(), GetParam().expected);
 }
 
 void test_bool_bin_expr(const std::string& code) {
   CHECK_EXPR(stmt, code);
 
   auto decl = cast<VariableDeclarationStatement>(stmt.get());
-  ASSERT_TRUE(decl->declaration_type.has_value());
+  ASSERT_NE(decl->declaration_type, nullptr);
 
-  ASSERT_EQ(decl->declaration_type->type_id, TypeId::Bool);
+  ASSERT_EQ(decl->declaration_type->kind(), TypeKind::Bool);
 
   auto bin = cast<BinaryExpression>(decl->value.get());
 
-  ASSERT_TRUE(bin->operand_type.has_value());
-  EXPECT_EQ(bin->operand_type->type_id, TypeId::Int32);
+  ASSERT_NE(bin->operand_type, nullptr);
+  EXPECT_EQ(bin->operand_type->kind(), TypeKind::Int32);
 
-  ASSERT_TRUE(bin->resolved_type.has_value());
-  EXPECT_EQ(bin->resolved_type->type_id, TypeId::Bool);
+  ASSERT_NE(bin->resolved_type, nullptr);
+  EXPECT_EQ(bin->resolved_type->kind(), TypeKind::Bool);
 
   auto left = cast<IntLiteralExpression>(bin->lhs.get());
-  ASSERT_TRUE(left->resolved_type.has_value());
-  EXPECT_EQ(left->resolved_type->type_id, TypeId::Int32);
+  ASSERT_NE(left->resolved_type, nullptr);
+  EXPECT_EQ(left->resolved_type->kind(), TypeKind::Int32);
 
   auto right = cast<IntLiteralExpression>(bin->rhs.get());
-  ASSERT_TRUE(right->resolved_type.has_value());
-  EXPECT_EQ(right->resolved_type->type_id, TypeId::Int32);
+  ASSERT_NE(right->resolved_type, nullptr);
+  EXPECT_EQ(right->resolved_type->kind(), TypeKind::Int32);
 }
 
 TEST(TypeCheckTest, InfersBoolFromLiteralBinaryExpr) {
@@ -157,19 +161,19 @@ TEST(TypeCheckTest, InfersLiteralAgainstConcrete) {
 
   auto y_decl = cast<VariableDeclarationStatement>(stmts.at(1).get());
 
-  ASSERT_TRUE(y_decl->declaration_type.has_value());
-  ASSERT_EQ(y_decl->declaration_type->type_id, TypeId::Int64);
+  ASSERT_NE(y_decl->declaration_type, nullptr);
+  ASSERT_EQ(y_decl->declaration_type->kind(), TypeKind::Int64);
 
   auto bin = cast<BinaryExpression>(y_decl->value.get());
 
   auto left = cast<VariableExpression>(bin->lhs.get());
   auto right = cast<IntLiteralExpression>(bin->rhs.get());
 
-  ASSERT_TRUE(left->resolved_type.has_value());
-  EXPECT_EQ(left->resolved_type->type_id, TypeId::Int64);
+  ASSERT_NE(left->resolved_type, nullptr);
+  EXPECT_EQ(left->resolved_type->kind(), TypeKind::Int64);
 
-  ASSERT_TRUE(right->resolved_type.has_value());
-  EXPECT_EQ(right->resolved_type->type_id, TypeId::Int64);
+  ASSERT_NE(right->resolved_type, nullptr);
+  EXPECT_EQ(right->resolved_type->kind(), TypeKind::Int64);
 }
 
 TEST(TypeCheckTest, InfersLiteralAgainstConcreteBoolOp) {
@@ -182,23 +186,23 @@ TEST(TypeCheckTest, InfersLiteralAgainstConcreteBoolOp) {
 
   auto y_decl = cast<VariableDeclarationStatement>(stmts.at(1).get());
 
-  ASSERT_TRUE(y_decl->declaration_type.has_value());
-  ASSERT_EQ(y_decl->declaration_type->type_id, TypeId::Bool);
+  ASSERT_NE(y_decl->declaration_type, nullptr);
+  ASSERT_EQ(y_decl->declaration_type->kind(), TypeKind::Bool);
 
   auto bin = cast<BinaryExpression>(y_decl->value.get());
 
   auto left = cast<VariableExpression>(bin->lhs.get());
   auto right = cast<IntLiteralExpression>(bin->rhs.get());
 
-  ASSERT_TRUE(left->resolved_type.has_value());
-  EXPECT_EQ(left->resolved_type->type_id, TypeId::Int64);
+  ASSERT_NE(left->resolved_type, nullptr);
+  EXPECT_EQ(left->resolved_type->kind(), TypeKind::Int64);
 
-  ASSERT_TRUE(right->resolved_type.has_value());
-  EXPECT_EQ(right->resolved_type->type_id, TypeId::Int64);
+  ASSERT_NE(right->resolved_type, nullptr);
+  EXPECT_EQ(right->resolved_type->kind(), TypeKind::Int64);
 }
 
 struct IntRange {
-  TypeId int_type;
+  TypeKind int_type;
   std::string value;
   bool success;
 };
@@ -208,46 +212,53 @@ class CheckIntFitsTest : public testing::TestWithParam<IntRange> {};
 INSTANTIATE_TEST_SUITE_P(
     CheckIntFits, CheckIntFitsTest,
     testing::Values(
-        IntRange{.int_type = TypeId::Int8, .value = "127", .success = true},
-        IntRange{.int_type = TypeId::Int8, .value = "200", .success = false},
-        IntRange{.int_type = TypeId::Int16, .value = "32767", .success = true},
-        IntRange{.int_type = TypeId::Int16, .value = "50000", .success = false},
+        IntRange{.int_type = TypeKind::Int8, .value = "127", .success = true},
+        IntRange{.int_type = TypeKind::Int8, .value = "200", .success = false},
         IntRange{
-            .int_type = TypeId::Int32, .value = "2147483647", .success = true},
+            .int_type = TypeKind::Int16, .value = "32767", .success = true},
         IntRange{
-            .int_type = TypeId::Int32, .value = "2147483999", .success = false},
-        IntRange{.int_type = TypeId::Int64,
+            .int_type = TypeKind::Int16, .value = "50000", .success = false},
+        IntRange{.int_type = TypeKind::Int32,
+                 .value = "2147483647",
+                 .success = true},
+        IntRange{.int_type = TypeKind::Int32,
+                 .value = "2147483999",
+                 .success = false},
+        IntRange{.int_type = TypeKind::Int64,
                  .value = "9223372036854775807",
                  .success = true},
-        IntRange{.int_type = TypeId::Int64,
+        IntRange{.int_type = TypeKind::Int64,
                  .value = "9223372036854775999",
                  .success = false},
 
-        IntRange{.int_type = TypeId::UInt8, .value = "255", .success = true},
-        IntRange{.int_type = TypeId::UInt8, .value = "300", .success = false},
-        IntRange{.int_type = TypeId::UInt16, .value = "65535", .success = true},
+        IntRange{.int_type = TypeKind::UInt8, .value = "255", .success = true},
+        IntRange{.int_type = TypeKind::UInt8, .value = "300", .success = false},
         IntRange{
-            .int_type = TypeId::UInt16, .value = "70000", .success = false},
+            .int_type = TypeKind::UInt16, .value = "65535", .success = true},
         IntRange{
-            .int_type = TypeId::UInt32, .value = "4294967295", .success = true},
-        IntRange{.int_type = TypeId::UInt32,
+            .int_type = TypeKind::UInt16, .value = "70000", .success = false},
+        IntRange{.int_type = TypeKind::UInt32,
+                 .value = "4294967295",
+                 .success = true},
+        IntRange{.int_type = TypeKind::UInt32,
                  .value = "5294967295",
                  .success = false},
-        IntRange{.int_type = TypeId::UInt64,
+        IntRange{.int_type = TypeKind::UInt64,
                  .value = "18446744073709551615",
                  .success = true},
-        IntRange{.int_type = TypeId::UInt64,
+        IntRange{.int_type = TypeKind::UInt64,
                  .value = "18446744073709999999",
                  .success = false}),
 
     ([](const testing::TestParamInfo<IntRange>& info) -> std::string {
-      return type_id_to_str(info.param.int_type) + "_" + info.param.value;
+      return std::string(type_kind_to_str(info.param.int_type)) + "_" +
+             info.param.value;
     }));
 
 TEST_P(CheckIntFitsTest, CheckSizedIntFits) {
   auto param = GetParam();
   auto stmt_code =
-      std::format("x: {} = {}", type_id_to_str(param.int_type), param.value);
+      std::format("x: {} = {}", type_kind_to_str(param.int_type), param.value);
   using ::testing::HasSubstr;
   using ::testing::Not;
 

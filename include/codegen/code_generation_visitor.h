@@ -53,11 +53,12 @@ class CodegenVisitor : public Visitor {
   void visit(LoopStatement& loop) override;
   void visit(BreakStatement& brk) override;
   void visit(CycleStatement& cycle) override;
+  void visit(PointerTypeExpression& ptr) override;
 
   auto emit(ASTNode& expr) -> llvm::Value*;
   void compile();
   void output_llvm(const std::string_view filename);
-  auto get_llvm_type(Type& type) -> llvm::Type*;
+  auto get_llvm_type(std::unique_ptr<Type>& type) -> llvm::Type*;
 
   std::unique_ptr<llvm::LLVMContext> llvm_context;
   std::unique_ptr<llvm::Module> llvm_module;

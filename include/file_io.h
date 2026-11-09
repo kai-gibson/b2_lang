@@ -23,7 +23,7 @@ struct ReadFileError : Error {
       : Error(message), code(code) {}
 };
 
-auto read_entire_file(
-    const std::string& filename) _NOEXCEPT -> std::expected<std::string, ReadFileError>;
+auto read_entire_file(const std::string& filename) _NOEXCEPT
+    -> std::expected<std::string, ReadFileError>;
 
 #endif  // FILE_IO_H

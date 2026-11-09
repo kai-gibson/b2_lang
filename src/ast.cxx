@@ -19,17 +19,4 @@ inline void BlockStatement::accept(Visitor& v) { v.visit(*this); }
 inline void LoopStatement::accept(Visitor& v) { v.visit(*this); }
 inline void BreakStatement::accept(Visitor& v) { v.visit(*this); }
 inline void CycleStatement::accept(Visitor& v) { v.visit(*this); }
-
-auto get_type_id(const std::string& s) -> TypeId {
-  auto it = builtin_types.find(s);
-  if (it != builtin_types.end()) return it->second;
-
-  return TypeId::UserDefined;
-}
-
-auto type_id_to_str(TypeId type_id) -> std::string {
-  auto it = type_id_str_map.find(type_id);
-  if (it != type_id_str_map.end()) return it->second;
-
-  throw std::runtime_error("Unknown type id in map");
-}
+inline void PointerTypeExpression::accept(Visitor& v) { v.visit(*this); }

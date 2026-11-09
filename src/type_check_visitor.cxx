@@ -7,55 +7,56 @@
 #include "lexer.h"
 #include "parser.h"
 
-auto is_literal(const Type& type) -> bool {
-  switch (type.type_id) {
-    case TypeId::IntLiteral:
-    case TypeId::FloatLiteral:
+auto is_literal(const std::unique_ptr<Type>& type) -> bool {
+  switch (type->kind()) {
+    case TypeKind::IntLiteral:
+    case TypeKind::FloatLiteral:
       return true;
     default:
       return false;
   }
 }
 
-auto is_integer(Type& type) -> bool {
-  switch (type.type_id) {
-    case TypeId::Int8:
-    case TypeId::Int16:
-    case TypeId::Int32:
-    case TypeId::Int64:
-    case TypeId::UInt8:
-    case TypeId::UInt16:
-    case TypeId::UInt32:
-    case TypeId::UInt64:
+auto is_integer(const std::unique_ptr<Type>& type) -> bool {
+  switch (type->kind()) {
+    case TypeKind::Int8:
+    case TypeKind::Int16:
+    case TypeKind::Int32:
+    case TypeKind::Int64:
+    case TypeKind::UInt8:
+    case TypeKind::UInt16:
+    case TypeKind::UInt32:
+    case TypeKind::UInt64:
       return true;
     default:
       return false;
   }
 }
 
-auto int_is_in_range(mp::int128_t& value, Type& expected) -> bool {
-  switch (expected.type_id) {
-    case TypeId::Int8:
+auto int_is_in_range(mp::int128_t& value, std::unique_ptr<Type>& expected)
+    -> bool {
+  switch (expected->kind()) {
+    case TypeKind::Int8:
       return value >= INT8_MIN && value <= INT8_MAX;
-    case TypeId::Int16:
+    case TypeKind::Int16:
       return value >= INT16_MIN && value <= INT16_MAX;
-    case TypeId::Int32:
+    case TypeKind::Int32:
       return value >= INT32_MIN && value <= INT32_MAX;
-    case TypeId::Int64:
+    case TypeKind::Int64:
       return value >= INT64_MIN && value <= INT64_MAX;
-    case TypeId::UInt8:
+    case TypeKind::UInt8:
       return value >= 0 && value <= UINT8_MAX;
-    case TypeId::UInt16:
+    case TypeKind::UInt16:
       return value >= 0 && value <= UINT16_MAX;
-    case TypeId::UInt32:
+    case TypeKind::UInt32:
       return value >= 0 && value <= UINT32_MAX;
-    case TypeId::UInt64:
+    case TypeKind::UInt64:
       return value >= 0 && value <= UINT64_MAX;
-    case TypeId::Float32: {
+    case TypeKind::Float32: {
       constexpr int64_t MAX_F32_VALUE = 1LL << 24;
       return value >= -MAX_F32_VALUE && value <= MAX_F32_VALUE;
     }
-    case TypeId::Float64: {
+    case TypeKind::Float64: {
       constexpr int64_t MAX_F64_VALUE = 1LL << 53;
       return value >= -MAX_F64_VALUE && value <= MAX_F64_VALUE;
     }
@@ -64,23 +65,23 @@ auto int_is_in_range(mp::int128_t& value, Type& expected) -> bool {
   }
 }
 
-auto is_float(Type& type) -> bool {
-  switch (type.type_id) {
-    case TypeId::Float32:
-    case TypeId::Float64:
+auto is_float(std::unique_ptr<Type>& type) -> bool {
+  switch (type->kind()) {
+    case TypeKind::Float32:
+    case TypeKind::Float64:
       return true;
     default:
       return false;
   }
 }
 
-auto float_is_in_range(double value, Type& expected) -> bool {
-  switch (expected.type_id) {
-    case TypeId::Float32: {
+auto float_is_in_range(double value, std::unique_ptr<Type>& expected) -> bool {
+  switch (expected->kind()) {
+    case TypeKind::Float32: {
       constexpr auto MAX_F32_VALUE = static_cast<double>(1LL << 24);
       return value >= -MAX_F32_VALUE && value <= MAX_F32_VALUE;
     }
-    case TypeId::Float64: {
+    case TypeKind::Float64: {
       constexpr auto MAX_F64_VALUE = static_cast<double>(1LL << 53);
       return value >= -MAX_F64_VALUE && value <= MAX_F64_VALUE;
     }
@@ -89,37 +90,41 @@ auto float_is_in_range(double value, Type& expected) -> bool {
   }
 }
 
-auto get_literal_default(Type& type, SourceLocation loc) -> Type {
-  switch (type.type_id) {
-    case TypeId::IntLiteral:
-      return Type{.type_id = TypeId::Int32, .identifier = "Int32"};
-    case TypeId::FloatLiteral:
-      return Type{.type_id = TypeId::Float64, .identifier = "Float64"};
+auto get_literal_default(std::unique_ptr<Type>& type, SourceLocation loc)
+    -> std::unique_ptr<Type> {
+  switch (type->kind()) {
+    case TypeKind::IntLiteral:
+      return std::make_unique<Int32Type>();
+    case TypeKind::FloatLiteral:
+      return std::make_unique<Float64Type>();
     default:
       throw TypeError(
           loc, "Can't give a default literal value for non-literal type \"{}\"",
-          type.identifier);
+          type->kind_name());
   }
 }
 
 VariableScopeStack::VariableScopeStack() { _scope_map.emplace_back(); }
 
-auto VariableScopeStack::find(const std::string& key) -> std::optional<Type> {
-  for (const auto& scope : _scope_map) {
+auto VariableScopeStack::find(const std::string& key)
+    -> std::unique_ptr<Type>* {
+  for (auto& scope : _scope_map) {
     auto it = scope.find(key);
-    if (it != scope.end()) return it->second;
+    if (it != scope.end()) return &it->second;
   }
 
-  return std::nullopt;
+  return nullptr;
 }
 
 auto VariableScopeStack::push() -> void { _scope_map.emplace_back(); }
 auto VariableScopeStack::pop() -> void { _scope_map.pop_back(); }
-auto VariableScopeStack::store(const std::string& key, Type& value) -> void {
-  _scope_map.back()[key] = value;
+auto VariableScopeStack::store(const std::string& key,
+                               std::unique_ptr<Type> value) -> void {
+  _scope_map.back()[key] = std::move(value);
 }
 
-auto TypeCheckVisitor::infer_expr_top_level(ASTNode* node) -> Type {
+auto TypeCheckVisitor::infer_expr_top_level(ASTNode* node)
+    -> std::unique_ptr<Type> {
   auto resolved_type = infer_expr(node);
 
   // if it's a literal, we need to default it and push the type back down
@@ -144,17 +149,18 @@ void TypeCheckVisitor::visit_statement_var_decl(
   if (decl->type_identifier) {
     decl->declaration_type = infer_expr(decl->type_identifier.get());
 
-    check_expr(decl->value.get(), *decl->declaration_type);
+    check_expr(decl->value.get(), decl->declaration_type);
   } else {
     // otherwise infer it
     decl->declaration_type = infer_expr_top_level(decl->value.get());
   }
 
-  variable_scope_stack.store(decl->name, *decl->declaration_type);
+  variable_scope_stack.store(decl->name, decl->declaration_type->clone());
 }
 
 void TypeCheckVisitor::visit_statement_if(IfStatement* ifstmt) {
-  auto expected = BOOL_TYPE;
+  std::unique_ptr<Type> expected = std::make_unique<BoolType>();
+
   check_expr(ifstmt->condition.get(), expected);
 
   visit_statement_node(ifstmt->if_then.get());
@@ -178,12 +184,12 @@ void TypeCheckVisitor::visit_statement_var_assign(
     VariableAssignmentStatement* var) {
   auto found = this->variable_scope_stack.find(var->name);
 
-  if (!found.has_value()) {
+  if (found == nullptr) {
     throw TypeError(var->source_location, "Usage of undefined variable \"{}\"",
                     var->name);
   }
 
-  auto& var_type = found.value();
+  auto& var_type = *found;
 
   check_expr(var->value.get(), var_type);
 }
@@ -199,8 +205,7 @@ void TypeCheckVisitor::visit_statement_fn_decl(FunctionDeclaration* fn) {
   visit_statement_node(fn->statements.get());
 
   // all functions return Int32 for now
-  function_map[fn->name] =
-      Type{.type_id = TypeId::Int32, .identifier = "Int32"};
+  function_map[fn->name] = std::make_unique<Int32Type>();
 }
 
 void TypeCheckVisitor::visit_statement_show(ShowStatement* show) {
@@ -261,103 +266,105 @@ void TypeCheckVisitor::visit_statement_node(ASTNode* node) {
 }
 
 void TypeCheckVisitor::check_expr_int_literal(IntLiteralExpression* node,
-                                              Type& expected) {
+                                              std::unique_ptr<Type>& expected) {
   if (is_integer(expected) || is_float(expected)) {
     if (!int_is_in_range(node->value, expected)) {
       throw TypeError(
           node->source_location,
           "Integer literal ({}) cannot fit in type {} without data loss",
-          node->value.str(), expected.identifier);
+          node->value.str(), expected->kind_name());
     }
 
-    node->resolved_type = expected;
+    node->resolved_type = expected->clone();
   } else {
     throw TypeError(node->source_location,
                     "Cannot implicitly convert Integer literal ({}) to type {}",
-                    node->value.str(), expected.identifier);
+                    node->value.str(), expected->kind_name());
   }
 }
 
 void TypeCheckVisitor::check_expr_type_expr(TypeExpression* node,
-                                            Type& expected) {
+                                            std::unique_ptr<Type>& expected) {
   throw TypeError(node->source_location,
                   "Attempt to check Type expression {} against type {}",
-                  node->name, expected.identifier);
+                  node->name, expected->kind_name());
 }
 
-void TypeCheckVisitor::check_expr_pointer_type_expr(PointerTypeExpression* node,
-                                                    Type& expected) {
-  check_expr(node->type_identifier.get(), expected);
+void TypeCheckVisitor::check_expr_pointer_type_expr(
+    PointerTypeExpression* node, std::unique_ptr<Type>& expected) {
+  throw TypeError(node->source_location,
+                  "Attempt to check PointerType expression against type {}",
+                  expected->kind_name());
 }
 
 void TypeCheckVisitor::check_expr_func_call(FunctionCallExpression* node,
-                                            Type& expected) {
+                                            std::unique_ptr<Type>& expected) {
   auto it = function_map.find(node->name);
   if (it == function_map.end()) {
     throw TypeError(node->source_location, "Call to undefined function \"{}\"",
                     node->name);
   }
 
-  if (it->second.type_id != expected.type_id) {
+  if (it->second->kind() != expected->kind()) {
     throw TypeError(node->source_location,
                     "Expected {}, Got {} from call to function \"{}\"",
-                    expected.identifier, it->second.identifier, node->name);
+                    expected->kind_name(), it->second->kind_name(), node->name);
   }
 }
 
 void TypeCheckVisitor::check_expr_var_expr(VariableExpression* node,
-                                           Type& expected) {
+                                           std::unique_ptr<Type>& expected) {
   auto found = variable_scope_stack.find(node->name);
-  if (!found.has_value()) {
+  if (found == nullptr) {
     throw TypeError(node->source_location, "Usage of undefined variable \"{}\"",
                     node->name);
   }
 
-  if (found->type_id != expected.type_id) {
+  if ((*found)->kind() != expected->kind()) {
     throw TypeError(node->source_location,
                     "Expected type {}, got {} from usage of variable \"{}\"",
-                    expected.identifier, found->identifier, node->name);
+                    expected->kind_name(), (*found)->kind_name(), node->name);
   }
 
-  node->resolved_type = expected;
+  node->resolved_type = expected->clone();
 }
 
 void TypeCheckVisitor::check_expr_bin_expr(BinaryExpression* node,
-                                           Type& expected) {
+                                           std::unique_ptr<Type>& expected) {
   // bool operators have a different operand type to resolved type
-  Type left, right;
   if (is_bool_operator(node->op)) {
     // bools get inferred since their resolved type isn't related to the
     // operand type
     infer_expr_bin_expr(node);
   } else {
-    node->resolved_type = expected;
-    node->operand_type = expected;
+    node->resolved_type = expected->clone();
+    node->operand_type = expected->clone();
 
     check_expr(node->lhs.get(), expected);
     check_expr(node->rhs.get(), expected);
   }
 }
 
-void TypeCheckVisitor::check_expr_float_literal(FloatLiteralExpression* node,
-                                                Type& expected) {
+void TypeCheckVisitor::check_expr_float_literal(
+    FloatLiteralExpression* node, std::unique_ptr<Type>& expected) {
   if (!is_float(expected)) {
     throw TypeError(node->source_location,
                     "Float literal ({}) cannot be converted to type {}",
-                    node->value, expected.identifier);
+                    node->value, expected->kind_name());
   }
 
   if (!float_is_in_range(node->value, expected)) {
     throw TypeError(
         node->source_location,
         "Float literal ({}) cannot fit in type {} without data loss",
-        node->value, expected.identifier);
+        node->value, expected->kind_name());
   }
 
-  node->resolved_type = expected;
+  node->resolved_type = expected->clone();
 }
 
-void TypeCheckVisitor::check_expr(ASTNode* node, Type& expected) {
+void TypeCheckVisitor::check_expr(ASTNode* node,
+                                  std::unique_ptr<Type>& expected) {
   switch (node->kind()) {
     case NodeKind::IntLiteralExpression:
       check_expr_int_literal(cast<IntLiteralExpression>(node), expected);
@@ -407,58 +414,69 @@ void TypeCheckVisitor::check_expr(ASTNode* node, Type& expected) {
 }
 
 auto TypeCheckVisitor::infer_expr_int_literal(IntLiteralExpression* node)
-    -> Type {
-  node->resolved_type =
-      Type{.type_id = TypeId::IntLiteral, .identifier = "IntLiteral"};
-  return *node->resolved_type;
+    -> std::unique_ptr<Type> {
+  node->resolved_type = std::make_unique<IntLiteralType>();
+  return node->resolved_type->clone();
 }
 
-auto TypeCheckVisitor::infer_expr_type_expr(TypeExpression* node) -> Type {
+auto TypeCheckVisitor::infer_expr_type_expr(TypeExpression* node)
+    -> std::unique_ptr<Type> {
   if (!is_builtin_type(node->name)) {
-    throw TypeError(node->source_location, "User type {} is invalid",
-                    node->name);
+    throw TypeError(node->source_location, "Type {} is invalid", node->name);
   }
 
-  return Type{.type_id = get_type_id(node->name), .identifier = node->name};
+  return str_to_type(node->name);
+}
+
+auto TypeCheckVisitor::infer_expr_pointer_type_expr(PointerTypeExpression* node)
+    -> std::unique_ptr<Type> {
+  auto pointer_type = std::make_unique<PointerType>();
+  pointer_type->base = infer_expr(node->base_type.get());
+
+  return pointer_type;
 }
 
 auto TypeCheckVisitor::infer_expr_func_call(FunctionCallExpression* node)
-    -> Type {
+    -> std::unique_ptr<Type> {
   auto it = function_map.find(node->name);
   if (it == function_map.end()) {
     throw TypeError(node->source_location, "Call to undefined function \"{}\"",
                     node->name);
   }
 
-  return it->second;
+  return it->second->clone();
 }
 
-auto TypeCheckVisitor::infer_expr_var_expr(VariableExpression* node) -> Type {
+auto TypeCheckVisitor::infer_expr_var_expr(VariableExpression* node)
+    -> std::unique_ptr<Type> {
   auto found = variable_scope_stack.find(node->name);
-  if (!found.has_value()) {
+  if (found == nullptr) {
     throw TypeError(node->source_location, "Usage of undefined variable \"{}\"",
                     node->name);
   }
 
-  node->resolved_type = *found;
-  return *node->resolved_type;
+  node->resolved_type = (*found)->clone();
+  return node->resolved_type->clone();
 }
 
 /*
 If a literal is involved, resolve to either concrete type or the best matching
 literal
  */
-Type TypeCheckVisitor::resolve_literal_pair(const BinaryExpression* bin,
-                                            Type& left, Type& right) {
-  auto it = LITERAL_PROMOTION_MAP.find(Pair{.left = left, .right = right});
+auto TypeCheckVisitor::resolve_literal_pair(const BinaryExpression* bin,
+                                            std::unique_ptr<Type>& left,
+                                            std::unique_ptr<Type>& right)
+    -> std::unique_ptr<Type> {
+  auto it = LITERAL_PROMOTION_MAP.find(
+      Pair{.left = left->kind(), .right = right->kind()});
   if (it == LITERAL_PROMOTION_MAP.end()) {
     throw TypeError(
         bin->source_location,
         "Left {} and right {} types are not compatible for operation {}",
-        left.identifier, right.identifier, token_type_to_str(bin->op));
+        left->kind_name(), right->kind_name(), token_type_to_str(bin->op));
   }
 
-  Type found = it->second;
+  auto found = type_factory(it->second);
 
   // push concrete type down if one is found
   if (!is_literal(found)) {
@@ -469,30 +487,31 @@ Type TypeCheckVisitor::resolve_literal_pair(const BinaryExpression* bin,
     }
   }
 
-  left = it->second;
-  right = it->second;
-  return it->second;
+  left = found->clone();
+  right = found->clone();
+  return found;
 }
 
-auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
+auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node)
+    -> std::unique_ptr<Type> {
   auto left = infer_expr(node->lhs.get());
   auto right = infer_expr(node->rhs.get());
 
-  Type operand_type, resolved_type;
+  std::unique_ptr<Type> operand_type, resolved_type;
 
   if (is_literal(left) || is_literal(right)) {
     operand_type = resolve_literal_pair(node, left, right);
   }
 
-  if (left.type_id != right.type_id) {
+  if (left->kind() != right->kind()) {
     throw TypeError(node->source_location,
                     "Left {} and right {} types do not match for operation {}",
-                    left.identifier, right.identifier,
+                    left->kind_name(), right->kind_name(),
                     token_type_to_str(node->op));
   }
 
   if (is_bool_operator(node->op)) {
-    resolved_type = BOOL_TYPE;
+    resolved_type = std::make_unique<BoolType>();
 
     // bool must resolve now - no further context above
     if (is_literal(left) && is_literal(right)) {
@@ -501,27 +520,27 @@ auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node) -> Type {
       check_expr(node->lhs.get(), operand_type);
       check_expr(node->rhs.get(), operand_type);
     } else {
-      operand_type = left;
+      operand_type = left->clone();
     }
 
   } else {
-    if (operand_type.type_id == TypeId::Sentinel) {
-      operand_type = left;
+    if (operand_type == nullptr) {
+      operand_type = left->clone();
     }
-    resolved_type = operand_type;
+    resolved_type = operand_type->clone();
   }
 
-  node->operand_type = operand_type;
-  node->resolved_type = resolved_type;
+  node->operand_type = std::move(operand_type);
+  node->resolved_type = resolved_type->clone();
   return resolved_type;
 }
 
 auto TypeCheckVisitor::infer_expr_float_literal(FloatLiteralExpression* node)
-    -> Type {
-  return Type{.type_id = TypeId::FloatLiteral, .identifier = "FloatLiteral"};
+    -> std::unique_ptr<Type> {
+  return std::make_unique<FloatLiteralType>();
 }
 
-auto TypeCheckVisitor::infer_expr(ASTNode* node) -> Type {
+auto TypeCheckVisitor::infer_expr(ASTNode* node) -> std::unique_ptr<Type> {
   switch (node->kind()) {
     case NodeKind::IntLiteralExpression:
       return infer_expr_int_literal(cast<IntLiteralExpression>(node));

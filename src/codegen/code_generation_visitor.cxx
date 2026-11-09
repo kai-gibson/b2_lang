@@ -41,41 +41,45 @@ auto CodegenVisitor::emit(ASTNode& expr) -> llvm::Value* {
   return result;
 }
 
-auto CodegenVisitor::get_llvm_type(Type& type) -> llvm::Type* {
-  switch (type.type_id) {
-    case TypeId::Bool:
+auto CodegenVisitor::get_llvm_type(std::unique_ptr<Type>& type) -> llvm::Type* {
+  if (type == nullptr)
+    throw std::runtime_error(std::format(
+        "Found a defaulted type ID... track this down", type->kind_name()));
+
+  switch (type->kind()) {
+    case TypeKind::Bool:
       return llvm::Type::getInt1Ty(*llvm_context);
-    case TypeId::Int8:
+    case TypeKind::Int8:
       return llvm::Type::getInt8Ty(*llvm_context);
-    case TypeId::Int16:
+    case TypeKind::Int16:
       return llvm::Type::getInt16Ty(*llvm_context);
-    case TypeId::Int32:
+    case TypeKind::Int32:
       return llvm::Type::getInt32Ty(*llvm_context);
-    case TypeId::Int64:
+    case TypeKind::Int64:
       return llvm::Type::getInt64Ty(*llvm_context);
-    case TypeId::UInt8:
+    case TypeKind::UInt8:
       return llvm::Type::getInt8Ty(*llvm_context);
-    case TypeId::UInt16:
+    case TypeKind::UInt16:
       return llvm::Type::getInt16Ty(*llvm_context);
-    case TypeId::UInt32:
+    case TypeKind::UInt32:
       return llvm::Type::getInt32Ty(*llvm_context);
-    case TypeId::UInt64:
+    case TypeKind::UInt64:
       return llvm::Type::getInt64Ty(*llvm_context);
-    case TypeId::Float32:
+    case TypeKind::Float32:
       return llvm::Type::getFloatTy(*llvm_context);
-    case TypeId::Float64:
+    case TypeKind::Float64:
       return llvm::Type::getDoubleTy(*llvm_context);
-    case TypeId::String:
-    case TypeId::UserDefined:
-      throw std::runtime_error(
-          std::format("LLVMTYPE Datatype {} not implemented", type.identifier));
-    case TypeId::Sentinel:
+    case TypeKind::String:
+    case TypeKind::Pointer:
+    case TypeKind::Product:
+    case TypeKind::Array:
+    case TypeKind::Slice:
       throw std::runtime_error(std::format(
-          "Found a defaulted type ID... track this down", type.identifier));
-    case TypeId::IntLiteral:
-    case TypeId::FloatLiteral:
+          "LLVMTYPE Datatype {} not implemented", type->kind_name()));
+    case TypeKind::IntLiteral:
+    case TypeKind::FloatLiteral:
       throw std::runtime_error(std::format(
-          "Datatype {} should not survive until codegen", type.identifier));
+          "Datatype {} should not survive until codegen", type->kind_name()));
   }
 }
 
@@ -117,7 +121,7 @@ void CodegenVisitor::visit(VariableDeclarationStatement& stmt) {
     throw std::runtime_error("Unable to resolve variable type");
   }
 
-  auto type = get_llvm_type(*stmt.declaration_type);
+  auto type = get_llvm_type(stmt.declaration_type);
   auto* alloca = llvm_builder->CreateAlloca(type, nullptr, stmt.name);
   llvm_builder->CreateStore(r, alloca);
   named_values[stmt.name] = alloca;
@@ -152,13 +156,13 @@ void CodegenVisitor::visit(BinaryExpression& expr) {
   // bool operations need to use type operations of the operand type
   std::unique_ptr<TypeOperations> builder;
 
-  if (expr.resolved_type->type_id == TypeId::Bool) {
+  if (expr.resolved_type->kind() == TypeKind::Bool) {
     if (!expr.operand_type) {
       throw std::runtime_error("Couldn't resolve type for boolean expression");
     }
-    builder = build_type_operations(*expr.operand_type, *llvm_builder);
+    builder = build_type_operations(expr.operand_type, *llvm_builder);
   } else {
-    builder = build_type_operations(*expr.resolved_type, *llvm_builder);
+    builder = build_type_operations(expr.resolved_type, *llvm_builder);
   }
 
   result = builder->apply(expr.op, l, r);
@@ -170,21 +174,21 @@ void CodegenVisitor::visit(FloatLiteralExpression& expr) {
 
 void CodegenVisitor::visit(IntLiteralExpression& expr) {
   int32_t num_bits{};
-  switch (expr.resolved_type->type_id) {
-    case TypeId::Int8:
-    case TypeId::UInt8:
+  switch (expr.resolved_type->kind()) {
+    case TypeKind::Int8:
+    case TypeKind::UInt8:
       num_bits = 8;
       break;
-    case TypeId::Int16:
-    case TypeId::UInt16:
+    case TypeKind::Int16:
+    case TypeKind::UInt16:
       num_bits = 16;
       break;
-    case TypeId::Int32:
-    case TypeId::UInt32:
+    case TypeKind::Int32:
+    case TypeKind::UInt32:
       num_bits = 32;
       break;
-    case TypeId::Int64:
-    case TypeId::UInt64:
+    case TypeKind::Int64:
+    case TypeKind::UInt64:
       num_bits = 64;
       break;
     default:
@@ -193,17 +197,17 @@ void CodegenVisitor::visit(IntLiteralExpression& expr) {
   }
 
   bool is_signed{};
-  switch (expr.resolved_type->type_id) {
-    case TypeId::Int8:
-    case TypeId::Int16:
-    case TypeId::Int32:
-    case TypeId::Int64:
+  switch (expr.resolved_type->kind()) {
+    case TypeKind::Int8:
+    case TypeKind::Int16:
+    case TypeKind::Int32:
+    case TypeKind::Int64:
       is_signed = true;
       break;
-    case TypeId::UInt8:
-    case TypeId::UInt16:
-    case TypeId::UInt32:
-    case TypeId::UInt64:
+    case TypeKind::UInt8:
+    case TypeKind::UInt16:
+    case TypeKind::UInt32:
+    case TypeKind::UInt64:
       is_signed = false;
       break;
     default:
@@ -226,7 +230,7 @@ void CodegenVisitor::visit(VariableExpression& expr) {
     throw std::runtime_error("Unable to resolve variable expression type");
   }
 
-  auto type = get_llvm_type(*expr.resolved_type);
+  auto type = get_llvm_type(expr.resolved_type);
   result = llvm_builder->CreateLoad(type, alloca, expr.name);
 }
 
@@ -269,6 +273,7 @@ void CodegenVisitor::visit(ReturnStatement& ret) {
 }
 
 void CodegenVisitor::visit(TypeExpression& ret) { (void)ret; }
+void CodegenVisitor::visit(PointerTypeExpression& ret) { (void)ret; }
 
 void CodegenVisitor::visit(FunctionCallExpression& funccall) {
   auto* fn = llvm_module->getFunction(funccall.name);

@@ -53,11 +53,11 @@ struct PrettyPrinter {
 struct PrintVisitor : public Visitor {
   PrettyPrinter printer;
 
-  void print_type(const std::optional<Type>& resolved_type,
+  void print_type(const std::unique_ptr<Type>& resolved_type,
                   const std::string& name = "ResolvedType") {
     if (resolved_type) {
       auto print_node = printer.add_node(name);
-      printer.add_value(resolved_type->identifier);
+      printer.add_value(resolved_type->kind_name());
     }
   }
 
@@ -177,6 +177,11 @@ struct PrintVisitor : public Visitor {
 
   void visit(CycleStatement& cycle) override {
     auto loop_stmt = printer.add_node("Cycle");
+  }
+
+  void visit(PointerTypeExpression& ptr) override {
+    auto loop_stmt = printer.add_node("PointerTypeExpression");
+    ptr.base_type->accept(*this);
   }
 };
 

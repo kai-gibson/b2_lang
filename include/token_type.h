@@ -24,6 +24,8 @@ enum class TokenType : int8_t {
   GreaterThanEquals,
   Equals,
   NotEquals,
+  LSquareBracket,
+  RSquareBracket,
 
   // Keywords
   Set,
@@ -64,6 +66,8 @@ constexpr auto TOKEN_TYPE_STR = to_static_map<TokenType, std::string_view>({
     {TokenType::GreaterThanEquals, "GreaterThanEquals"},
     {TokenType::Equals, "Equals"},
     {TokenType::NotEquals, "NotEquals"},
+    {TokenType::LSquareBracket, "LSquareBracket"},
+    {TokenType::RSquareBracket, "RSquareBracket"},
     {TokenType::Set, "Set"},
     {TokenType::Show, "Show"},
     {TokenType::Function, "Function"},
@@ -115,6 +119,8 @@ constexpr auto SYMBOLS = to_static_map<std::string_view, TokenType>({
     {">=", TokenType::GreaterThanEquals},
     {"==", TokenType::Equals},
     {"!=", TokenType::NotEquals},
+    {"[", TokenType::LSquareBracket},
+    {"]", TokenType::RSquareBracket},
 });
 
 constexpr auto token_type_to_str(TokenType t) -> const std::string_view {

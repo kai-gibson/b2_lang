@@ -5,100 +5,14 @@
 namespace mp = boost::multiprecision;
 #include <cassert>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "source_location.h"
 #include "token_type.h"
+#include "types.h"
 
 // forward declaration
 struct Visitor;
-
-enum class TypeId : uint8_t {
-  Bool,
-  Int8,
-  Int16,
-  Int32,
-  Int64,
-  UInt8,
-  UInt16,
-  UInt32,
-  UInt64,
-  Float32,
-  Float64,
-  String,
-  IntLiteral,
-  FloatLiteral,
-  UserDefined,
-  Sentinel,
-};
-
-const std::unordered_map<std::string, TypeId> builtin_types = {
-    {"Bool", TypeId::Bool},
-    {"Int8", TypeId::Int8},
-    {"Int16", TypeId::Int16},
-    {"Int32", TypeId::Int32},
-    {"Int64", TypeId::Int64},
-    {"UInt8", TypeId::UInt8},
-    {"UInt16", TypeId::UInt16},
-    {"UInt32", TypeId::UInt32},
-    {"UInt64", TypeId::UInt64},
-    {"Float32", TypeId::Float32},
-    {"Float64", TypeId::Float64},
-    {"String", TypeId::String},
-    {"UserDefined", TypeId::UserDefined},
-};
-
-auto get_type_id(const std::string& s) -> TypeId;
-
-const std::unordered_map<TypeId, std::string> type_id_str_map = {
-    {TypeId::Bool, "Bool"},
-    {TypeId::Int8, "Int8"},
-    {TypeId::Int16, "Int16"},
-    {TypeId::Int32, "Int32"},
-    {TypeId::Int64, "Int64"},
-    {TypeId::UInt8, "UInt8"},
-    {TypeId::UInt16, "UInt16"},
-    {TypeId::UInt32, "UInt32"},
-    {TypeId::UInt64, "UInt64"},
-    {TypeId::Float32, "Float32"},
-    {TypeId::Float64, "Float64"},
-    {TypeId::String, "String"},
-    {TypeId::UserDefined, "UserDefined"},
-    {TypeId::Sentinel, "Sentinel"},
-};
-
-auto type_id_to_str(TypeId type_id) -> std::string;
-
-struct Type {
-  TypeId type_id = TypeId::Sentinel;
-  std::string identifier;
-};
-
-constexpr auto BOOL_TYPE = Type{.type_id = TypeId::Bool, .identifier = "Bool"};
-constexpr auto INT8_TYPE = Type{.type_id = TypeId::Int8, .identifier = "Int8"};
-constexpr auto INT16_TYPE =
-    Type{.type_id = TypeId::Int16, .identifier = "Int16"};
-constexpr auto INT32_TYPE =
-    Type{.type_id = TypeId::Int32, .identifier = "Int32"};
-constexpr auto INT64_TYPE =
-    Type{.type_id = TypeId::Int64, .identifier = "Int64"};
-constexpr auto UINT8_TYPE =
-    Type{.type_id = TypeId::UInt8, .identifier = "UInt8"};
-constexpr auto UINT16_TYPE =
-    Type{.type_id = TypeId::UInt16, .identifier = "UInt16"};
-constexpr auto UINT32_TYPE =
-    Type{.type_id = TypeId::UInt32, .identifier = "UInt32"};
-constexpr auto UINT64_TYPE =
-    Type{.type_id = TypeId::UInt64, .identifier = "UInt64"};
-constexpr auto INT_LITERAL_TYPE =
-    Type{.type_id = TypeId::IntLiteral, .identifier = "IntLiteral"};
-constexpr auto FLOAT_LITERAL_TYPE =
-    Type{.type_id = TypeId::FloatLiteral, .identifier = "FloatLiteral"};
-constexpr auto FLOAT32_TYPE =
-    Type{.type_id = TypeId::Float32, .identifier = "Float32"};
-constexpr auto FLOAT64_TYPE =
-    Type{.type_id = TypeId::Float64, .identifier = "Float64"};
 
 enum class NodeKind : uint8_t {
   FloatLiteralExpression,
@@ -156,7 +70,7 @@ struct FloatLiteralExpression : public ASTNode {
       : ASTNode(source_location, KIND), value(value) {}
 
   double value;
-  std::optional<Type> resolved_type;
+  std::unique_ptr<Type> resolved_type;
   void accept(Visitor& v) override;
 };
 
@@ -172,8 +86,8 @@ struct BinaryExpression : public ASTNode {
 
   TokenType op;
   std::unique_ptr<ASTNode> lhs, rhs;
-  std::optional<Type> operand_type;
-  std::optional<Type> resolved_type;
+  std::unique_ptr<Type> operand_type;
+  std::unique_ptr<Type> resolved_type;
   void accept(Visitor& v) override;
 };
 
@@ -184,7 +98,7 @@ struct VariableExpression : public ASTNode {
       : ASTNode(source_location, KIND), name(std::move(name)) {}
 
   std::string name;
-  std::optional<Type> resolved_type;
+  std::unique_ptr<Type> resolved_type;
   void accept(Visitor& v) override;
 };
 
@@ -199,7 +113,7 @@ struct VariableAssignmentStatement : public ASTNode {
 
   std::string name;
   std::unique_ptr<ASTNode> value;
-  std::optional<Type> assignment_type;
+  std::unique_ptr<Type> assignment_type;
   void accept(Visitor& v) override;
 };
 
@@ -218,7 +132,7 @@ struct VariableDeclarationStatement : public ASTNode {
   std::string name;
   std::unique_ptr<ASTNode> value;
   std::unique_ptr<ASTNode> type_identifier;
-  std::optional<Type> declaration_type;
+  std::unique_ptr<Type> declaration_type;
   void accept(Visitor& v) override;
 };
 
@@ -229,7 +143,7 @@ struct ShowStatement : public ASTNode {
       : ASTNode(source_location, KIND), expr(std::move(expr)) {}
 
   std::unique_ptr<ASTNode> expr;
-  std::optional<Type> expr_type;
+  std::unique_ptr<Type> expr_type;
   void accept(Visitor& v) override;
 };
 
@@ -269,7 +183,7 @@ struct ReturnStatement : public ASTNode {
       : ASTNode(source_location, KIND), expr(std::move(expr)) {}
 
   std::unique_ptr<ASTNode> expr;
-  std::optional<Type> expr_type;
+  std::unique_ptr<Type> expr_type;
   void accept(Visitor& v) override;
 };
 
@@ -300,7 +214,7 @@ struct IntLiteralExpression : public ASTNode {
       : ASTNode(source_location, KIND), value(std::move(value)) {}
 
   mp::int128_t value;
-  std::optional<Type> resolved_type;
+  std::unique_ptr<Type> resolved_type;
   void accept(Visitor& v) override;
 };
 

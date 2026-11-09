@@ -69,6 +69,7 @@ add_library(b2_lib OBJECT
     src/type_check_visitor.cxx
     src/codegen/code_generation_visitor.cxx
     src/codegen/operation_map.cxx
+    src/types.cxx
 )
 
 target_link_libraries(b2_lib
