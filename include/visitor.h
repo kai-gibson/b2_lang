@@ -22,6 +22,7 @@ struct Visitor {
   virtual void visit(BreakStatement& expr) = 0;
   virtual void visit(CycleStatement& expr) = 0;
   virtual void visit(PointerTypeExpression& expr) = 0;
+  virtual void visit(UnaryExpression& expr) = 0;
 };
 
 #endif  // VISITOR_H

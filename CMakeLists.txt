@@ -35,6 +35,7 @@ target_include_directories(project_settings SYSTEM INTERFACE
     ${LLVM_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/external/CLI11/include
     ${CMAKE_CURRENT_SOURCE_DIR}/external/multiprecision/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/magic_enum/include
 )
 
 target_compile_definitions(project_settings INTERFACE
@@ -70,6 +71,7 @@ add_library(b2_lib OBJECT
     src/codegen/code_generation_visitor.cxx
     src/codegen/operation_map.cxx
     src/types.cxx
+    src/operation.cxx
 )
 
 target_link_libraries(b2_lib

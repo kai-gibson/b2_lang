@@ -32,12 +32,6 @@ auto type_factory(TypeKind t) -> std::unique_ptr<Type> {
       return std::make_unique<BoolType>();
     case TypeKind::Pointer:
       return std::make_unique<PointerType>();
-    case TypeKind::Product:
-      return std::make_unique<ProductType>();
-    case TypeKind::Array:
-      return std::make_unique<ArrayType>();
-    case TypeKind::Slice:
-      return std::make_unique<SliceType>();
   }
 }
 
@@ -46,4 +40,60 @@ auto str_to_type(const std::string& s) -> std::unique_ptr<Type> {
   if (!t.has_value()) return nullptr;
 
   return type_factory(*t);
+}
+
+auto Type::flags() -> bitset<TypeFlag> {
+  switch (this->kind()) {
+    case TypeKind::Int8:
+    case TypeKind::Int16:
+    case TypeKind::Int32:
+    case TypeKind::Int64:
+      return {TypeFlag::Integer, TypeFlag::Signed};
+
+    case TypeKind::UInt8:
+    case TypeKind::UInt16:
+    case TypeKind::UInt32:
+    case TypeKind::UInt64:
+    case TypeKind::IntLiteral:
+      return {TypeFlag::Integer};
+
+    case TypeKind::Float32:
+    case TypeKind::Float64:
+    case TypeKind::FloatLiteral:
+      return {TypeFlag::Float};
+
+    case TypeKind::Bool:
+      return {TypeFlag::Bool};
+
+    case TypeKind::Pointer:
+      return {TypeFlag::Ptr};
+
+    case TypeKind::String:
+      return bitset<TypeFlag>{};
+  }
+}
+
+auto binary_op_rule(BinaryOperation op) -> BinaryRule {
+  switch (op) {
+    case BinaryOperation::Add:
+    case BinaryOperation::Subtract:
+    case BinaryOperation::Multiply:
+    case BinaryOperation::Divide:
+      return {.return_type = ReturnType::Same,
+              .type_flags = {TypeFlag::Integer, TypeFlag::Float}};
+    case BinaryOperation::Less:
+    case BinaryOperation::LessEqual:
+    case BinaryOperation::Greater:
+    case BinaryOperation::GreaterEqual:
+      return {.return_type = ReturnType::Bool,
+              .type_flags = {TypeFlag::Integer, TypeFlag::Float}};
+    case BinaryOperation::Equal:
+    case BinaryOperation::NotEqual:
+      return {.return_type = ReturnType::Same,
+              .type_flags = {TypeFlag::Bool, TypeFlag::Ptr, TypeFlag::Integer,
+                             TypeFlag::Float}};
+    case BinaryOperation::And:
+    case BinaryOperation::Or:
+      return {.return_type = ReturnType::Bool, .type_flags = {TypeFlag::Bool}};
+  }
 }

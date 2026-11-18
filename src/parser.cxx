@@ -2,6 +2,9 @@
 
 #include "compile_error.h"
 
+constexpr int PREFIX_PRECEDENCE = 5;
+constexpr int POSTFIX_PRECEDENCE = 6;
+
 // higher number == binds tighter
 auto precedence(TokenType t) -> int32_t {
   switch (t) {
@@ -115,16 +118,40 @@ auto Parser::parse_int_expression() -> std::unique_ptr<ASTNode> {
   return std::move(result);
 }
 
+auto Parser::parse_prefix_expression() -> std::unique_ptr<ASTNode> {
+  switch (peek().type) {
+    case TokenType::Minus:
+    case TokenType::Not:
+      return parse_unary_expression();
+    default:
+      throw ParseError(peek().source_location,
+                       "Unexpected prefix expression: {}",
+                       token_type_to_str(peek().type));
+  }
+}
+
 auto Parser::parse_expression(int32_t min_precedence)
     -> std::unique_ptr<ASTNode> {
-  auto lhs = parse_primary_expression();
+  std::unique_ptr<ASTNode> lhs;
+
+  if (PREFIX_TOKENS.contains(peek().type)) {
+    lhs = parse_prefix_expression();
+  } else {
+    lhs = parse_primary_expression();
+  }
 
   while (precedence(peek().type) > min_precedence) {
     auto op = peek();
+    auto binop = token_to_binary_op(op.type);
+    if (!binop) {
+      throw ParseError(op.source_location, "Unknown binary operator: {}",
+                       token_type_to_str(op.type));
+    }
+
     advance();
     auto rhs = parse_expression(precedence(op.type));
     lhs = std::make_unique<BinaryExpression>(
-        op.type, std::move(lhs), std::move(rhs), op.source_location);
+        *binop, std::move(lhs), std::move(rhs), op.source_location);
   }
 
   return lhs;
@@ -309,4 +336,18 @@ auto Parser::parse_break_statement() -> std::unique_ptr<ASTNode> {
 auto Parser::parse_cycle_statement() -> std::unique_ptr<ASTNode> {
   auto loc = consume(TokenType::Cycle).source_location;
   return std::make_unique<CycleStatement>(loc);
+}
+
+auto Parser::parse_unary_expression() -> std::unique_ptr<ASTNode> {
+  auto token = peek();
+  advance();
+
+  auto op = token_to_unary_op(token.type);
+  if (!op) {
+    throw ParseError(token.source_location, "Unknown unary operator: {}",
+                     token.type);
+  }
+
+  return std::make_unique<UnaryExpression>(token.source_location, *op,
+                                           parse_expression(PREFIX_PRECEDENCE));
 }

@@ -1,11 +1,13 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <magic_enum/magic_enum_containers.hpp>
 #include <memory>
 #include <string>
-#include <vector>
 
+#include "operation.h"
 #include "utils/container.h"
+using magic_enum::containers::bitset;
 
 enum class TypeKind : uint8_t {
   Int8,
@@ -23,9 +25,15 @@ enum class TypeKind : uint8_t {
   String,
   Bool,
   Pointer,
-  Product,
-  Array,
-  Slice,
+};
+
+enum class TypeFlag : uint8_t {
+  Integer,
+  Signed,
+  Float,
+  Ptr,
+  Bool,
+  String,
 };
 
 constexpr auto TYPE_KIND_STR = to_static_map<TypeKind, std::string_view>({
@@ -44,9 +52,6 @@ constexpr auto TYPE_KIND_STR = to_static_map<TypeKind, std::string_view>({
     {TypeKind::String, "String"},
     {TypeKind::Bool, "Bool"},
     {TypeKind::Pointer, "Pointer"},
-    {TypeKind::Product, "Product"},
-    {TypeKind::Array, "Array"},
-    {TypeKind::Slice, "Slice"},
 });
 
 constexpr auto PRIMITIVE_TYPES = to_static_map<std::string_view, TypeKind>({
@@ -80,9 +85,6 @@ constexpr auto ALL_TYPES = to_static_map<std::string_view, TypeKind>({
     {"String", TypeKind::String},
     {"Bool", TypeKind::Bool},
     {"Pointer", TypeKind::Pointer},
-    {"Product", TypeKind::Product},
-    {"Array", TypeKind::Array},
-    {"Slice", TypeKind::Slice},
 });
 
 constexpr auto type_kind_to_str(TypeKind t) -> const std::string_view {
@@ -93,10 +95,12 @@ constexpr auto type_kind_to_str(TypeKind t) -> const std::string_view {
 class Type {
  public:
   Type(TypeKind kind) : kind_(kind) {}
+
   virtual ~Type() = default;
 
   auto kind() -> TypeKind { return this->kind_; };
   auto kind_name() -> std::string_view { return type_kind_to_str(kind_); };
+  auto flags() -> bitset<TypeFlag>;
 
   virtual auto clone() -> std::unique_ptr<Type> = 0;
 
@@ -244,58 +248,16 @@ struct BoolType : public Type {
   }
 };
 
-struct ProductType : public Type {
-  static constexpr TypeKind KIND = TypeKind::Product;
-  ProductType() : Type(KIND) {}
-
-  struct Field {
-    std::string name;
-    std::unique_ptr<Type> type;
-  };
-
-  std::vector<Field> fields;
-
-  auto clone() -> std::unique_ptr<Type> override {
-    auto product_type = std::make_unique<ProductType>();
-    for (const auto& field : this->fields) {
-      product_type->fields.push_back(
-          Field{.name = field.name, .type = field.type->clone()});
-    }
-
-    return product_type;
-  }
-};
-
-struct ArrayType : public Type {
-  static constexpr TypeKind KIND = TypeKind::Array;
-  ArrayType() : Type(KIND) {}
-
-  size_t size;
-  std::unique_ptr<Type> base;
-
-  auto clone() -> std::unique_ptr<Type> override {
-    auto arr = std::make_unique<ArrayType>();
-    arr->base = this->base->clone();
-
-    return arr;
-  }
-};
-
-struct SliceType : public Type {
-  static constexpr TypeKind KIND = TypeKind::Slice;
-  SliceType() : Type(KIND) {}
-
-  std::unique_ptr<Type> base;
-
-  auto clone() -> std::unique_ptr<Type> override {
-    auto arr = std::make_unique<SliceType>();
-    arr->base = this->base->clone();
-
-    return arr;
-  }
-};
-
 auto type_factory(TypeKind t) -> std::unique_ptr<Type>;
 auto str_to_type(const std::string& s) -> std::unique_ptr<Type>;
+
+enum class ReturnType : uint8_t { Same, Bool };
+
+struct BinaryRule {
+  ReturnType return_type;
+  bitset<TypeFlag> type_flags;
+};
+
+auto binary_op_rule(BinaryOperation op) -> BinaryRule;
 
 #endif  // TYPES_H

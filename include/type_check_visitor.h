@@ -133,6 +133,7 @@ class TypeCheckVisitor {
                            std::unique_ptr<Type>& expected);
   void check_expr_float_literal(FloatLiteralExpression* node,
                                 std::unique_ptr<Type>& expected);
+  void check_unary_expr(UnaryExpression* node, std::unique_ptr<Type>& expected);
 
   auto infer_expr(ASTNode* node) -> std::unique_ptr<Type>;
   auto infer_expr_int_literal(IntLiteralExpression* node)
@@ -146,6 +147,7 @@ class TypeCheckVisitor {
   auto infer_expr_bin_expr(BinaryExpression* node) -> std::unique_ptr<Type>;
   auto infer_expr_float_literal(FloatLiteralExpression* node)
       -> std::unique_ptr<Type>;
+  auto infer_unary_expr(UnaryExpression* node) -> std::unique_ptr<Type>;
 
   /// Always resolves to non-literal concrete type
   /// by defaulting literals and pushing them back down.

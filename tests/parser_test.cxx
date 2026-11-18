@@ -36,7 +36,7 @@ TEST(ParserTest, ParsesIntAdditionVarAssignment) {
 
   auto value = cast<BinaryExpression>(decl->value.get());
 
-  ASSERT_EQ(value->op, TokenType::Plus);
+  ASSERT_EQ(value->op, BinaryOperation::Add);
 
   auto left = cast<IntLiteralExpression>(value->lhs.get());
   auto right = cast<IntLiteralExpression>(value->rhs.get());
@@ -51,7 +51,7 @@ TEST(ParserTest, ParsesFloatAdditionVarAssignment) {
   auto decl = cast<VariableDeclarationStatement>(root.get());
 
   auto value = cast<BinaryExpression>(decl->value.get());
-  ASSERT_EQ(value->op, TokenType::Plus);
+  ASSERT_EQ(value->op, BinaryOperation::Add);
 
   auto left = cast<FloatLiteralExpression>(value->lhs.get());
   auto right = cast<FloatLiteralExpression>(value->rhs.get());
@@ -88,7 +88,7 @@ TEST(ParserTest, ParsesMultiplication) {
   auto assign = cast<VariableDeclarationStatement>(expr.get());
 
   auto mult = cast<BinaryExpression>(assign->value.get());
-  ASSERT_EQ(mult->op, TokenType::Asterisk);
+  ASSERT_EQ(mult->op, BinaryOperation::Multiply);
 
   auto left = cast<IntLiteralExpression>(mult->lhs.get());
   auto right = cast<IntLiteralExpression>(mult->rhs.get());
@@ -104,7 +104,7 @@ TEST(ParserTest, ParsesDivision) {
   auto assign = cast<VariableDeclarationStatement>(expr.get());
 
   auto div = cast<BinaryExpression>(assign->value.get());
-  ASSERT_EQ(div->op, TokenType::ForwardSlash);
+  ASSERT_EQ(div->op, BinaryOperation::Divide);
   auto left = cast<IntLiteralExpression>(div->lhs.get());
   auto right = cast<IntLiteralExpression>(div->rhs.get());
 
@@ -155,13 +155,13 @@ TEST(ParserTest, ParsesParenExpression) {
   ASSERT_EQ(decl->name, "x");
 
   auto mult = cast<BinaryExpression>(decl->value.get());
-  ASSERT_EQ(mult->op, TokenType::Asterisk);
+  ASSERT_EQ(mult->op, BinaryOperation::Multiply);
 
   auto left_mult = cast<IntLiteralExpression>(mult->lhs.get());
   ASSERT_EQ(left_mult->value, 5);
 
   auto add = cast<BinaryExpression>(mult->rhs.get());
-  ASSERT_EQ(add->op, TokenType::Plus);
+  ASSERT_EQ(add->op, BinaryOperation::Add);
 
   auto left_add = cast<IntLiteralExpression>(add->lhs.get());
   EXPECT_EQ(left_add->value, 2);
@@ -176,13 +176,13 @@ TEST(ParserTest, ParsesMultAddOrder) {
   ASSERT_EQ(decl->name, "x");
 
   auto add = cast<BinaryExpression>(decl->value.get());
-  ASSERT_EQ(add->op, TokenType::Plus);
+  ASSERT_EQ(add->op, BinaryOperation::Add);
 
   auto left_add = cast<IntLiteralExpression>(add->lhs.get());
   ASSERT_EQ(left_add->value, 2);
 
   auto mult = cast<BinaryExpression>(add->rhs.get());
-  ASSERT_EQ(mult->op, TokenType::Asterisk);
+  ASSERT_EQ(mult->op, BinaryOperation::Multiply);
 
   auto mult_left = cast<IntLiteralExpression>(mult->lhs.get());
   ASSERT_EQ(mult_left->value, 3);

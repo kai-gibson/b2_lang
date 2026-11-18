@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "codegen/operation_map.h"
+#include "compile_error.h"
 #include "compiler.h"
 
 auto LoopBlockStack::push(LoopBlocks loop_blocks) -> void {
@@ -41,10 +42,12 @@ auto CodegenVisitor::emit(ASTNode& expr) -> llvm::Value* {
   return result;
 }
 
-auto CodegenVisitor::get_llvm_type(std::unique_ptr<Type>& type) -> llvm::Type* {
+auto CodegenVisitor::get_llvm_type(SourceLocation source_location,
+                                   std::unique_ptr<Type>& type) -> llvm::Type* {
   if (type == nullptr)
-    throw std::runtime_error(std::format(
-        "Found a defaulted type ID... track this down", type->kind_name()));
+    throw CodegenError(source_location,
+                       "Found a defaulted type ID... track this down",
+                       type->kind());
 
   switch (type->kind()) {
     case TypeKind::Bool:
@@ -71,21 +74,20 @@ auto CodegenVisitor::get_llvm_type(std::unique_ptr<Type>& type) -> llvm::Type* {
       return llvm::Type::getDoubleTy(*llvm_context);
     case TypeKind::String:
     case TypeKind::Pointer:
-    case TypeKind::Product:
-    case TypeKind::Array:
-    case TypeKind::Slice:
-      throw std::runtime_error(std::format(
-          "LLVMTYPE Datatype {} not implemented", type->kind_name()));
+      throw CodegenError(source_location,
+                         "LLVMTYPE Datatype {} not implemented", type->kind());
     case TypeKind::IntLiteral:
     case TypeKind::FloatLiteral:
-      throw std::runtime_error(std::format(
-          "Datatype {} should not survive until codegen", type->kind_name()));
+      throw CodegenError(source_location,
+                         "Datatype {} should not survive until codegen",
+                         type->kind());
   }
 }
 
 void CodegenVisitor::compile() {
-  if (llvm::verifyModule(*llvm_module, &llvm::errs()))
+  if (llvm::verifyModule(*llvm_module, &llvm::errs())) {
     throw std::runtime_error("LLVM IR errors detected. See output");
+  }
 
   compiler::emit_object_file(*llvm_module, "output.o");
   compiler::link("output.o", "output");
@@ -110,7 +112,8 @@ void CodegenVisitor::output_llvm(const std::string_view filename) {
 void CodegenVisitor::visit(VariableDeclarationStatement& stmt) {
   auto* exists = named_values[stmt.name];
   if (exists) {
-    throw std::runtime_error(
+    throw CodegenError(
+        stmt.source_location,
         "Cannot declare same variable twice; use `set x = 1` to modify "
         "value");
   }
@@ -118,10 +121,10 @@ void CodegenVisitor::visit(VariableDeclarationStatement& stmt) {
   auto r = emit(*stmt.value);
 
   if (!stmt.declaration_type) {
-    throw std::runtime_error("Unable to resolve variable type");
+    throw CodegenError(stmt.source_location, "Unable to resolve variable type");
   }
 
-  auto type = get_llvm_type(stmt.declaration_type);
+  auto type = get_llvm_type(stmt.source_location, stmt.declaration_type);
   auto* alloca = llvm_builder->CreateAlloca(type, nullptr, stmt.name);
   llvm_builder->CreateStore(r, alloca);
   named_values[stmt.name] = alloca;
@@ -132,8 +135,8 @@ void CodegenVisitor::visit(VariableDeclarationStatement& stmt) {
 void CodegenVisitor::visit(VariableAssignmentStatement& stmt) {
   auto* variable = named_values[stmt.name];
   if (!variable) {
-    throw std::runtime_error(
-        std::format("Cannot assign to non-existent variable: {}", stmt.name));
+    throw CodegenError(stmt.source_location,
+                       "Cannot assign to non-existent variable: {}", stmt.name);
   }
 
   auto r = emit(*stmt.value);
@@ -147,25 +150,24 @@ void CodegenVisitor::visit(BinaryExpression& expr) {
   auto l = emit(*expr.lhs);
   auto r = emit(*expr.rhs);
 
-  if (!l || !r) throw std::runtime_error("codegen failed on BinaryExpression");
-
-  if (!expr.resolved_type) {
-    throw std::runtime_error("Couldn't resolve type for binary expression");
+  if (!l || !r) {
+    throw CodegenError(expr.source_location,
+                       "codegen failed on BinaryExpression");
   }
 
-  // bool operations need to use type operations of the operand type
-  std::unique_ptr<TypeOperations> builder;
+  if (!expr.resolved_type) {
+    throw CodegenError(expr.source_location,
+                       "Couldn't resolve type for binary expression");
+  }
 
   if (expr.resolved_type->kind() == TypeKind::Bool) {
     if (!expr.operand_type) {
-      throw std::runtime_error("Couldn't resolve type for boolean expression");
+      throw CodegenError(expr.source_location,
+                         "Couldn't resolve type for boolean expression");
     }
-    builder = build_type_operations(expr.operand_type, *llvm_builder);
-  } else {
-    builder = build_type_operations(expr.resolved_type, *llvm_builder);
   }
 
-  result = builder->apply(expr.op, l, r);
+  result = emit_binary(*llvm_builder, expr, l, r);
 }
 
 void CodegenVisitor::visit(FloatLiteralExpression& expr) {
@@ -192,8 +194,8 @@ void CodegenVisitor::visit(IntLiteralExpression& expr) {
       num_bits = 64;
       break;
     default:
-      throw std::runtime_error(
-          "Got a non integer type inside int literal codegen.");
+      throw CodegenError(expr.source_location,
+                         "Got a non integer type inside int literal codegen.");
   }
 
   bool is_signed{};
@@ -211,8 +213,8 @@ void CodegenVisitor::visit(IntLiteralExpression& expr) {
       is_signed = false;
       break;
     default:
-      throw std::runtime_error(
-          "Got a non integer type inside int literal codegen.");
+      throw CodegenError(expr.source_location,
+                         "Got a non integer type inside int literal codegen.");
   }
 
   result = llvm::ConstantInt::get(
@@ -223,14 +225,15 @@ void CodegenVisitor::visit(IntLiteralExpression& expr) {
 void CodegenVisitor::visit(VariableExpression& expr) {
   auto* alloca = named_values[expr.name];
   if (!alloca)
-    throw std::runtime_error(
-        std::format("Unknown variable name: {}", expr.name));
+    throw CodegenError(expr.source_location, "Unknown variable name: {}",
+                       expr.name);
 
   if (!expr.resolved_type) {
-    throw std::runtime_error("Unable to resolve variable expression type");
+    throw CodegenError(expr.source_location,
+                       "Unable to resolve variable expression type");
   }
 
-  auto type = get_llvm_type(expr.resolved_type);
+  auto type = get_llvm_type(expr.source_location, expr.resolved_type);
   result = llvm_builder->CreateLoad(type, alloca, expr.name);
 }
 
@@ -278,8 +281,8 @@ void CodegenVisitor::visit(PointerTypeExpression& ret) { (void)ret; }
 void CodegenVisitor::visit(FunctionCallExpression& funccall) {
   auto* fn = llvm_module->getFunction(funccall.name);
   if (!fn)
-    throw std::runtime_error(
-        std::format("Function {} does not exist", funccall.name));
+    throw CodegenError(funccall.source_location, "Function {} does not exist",
+                       funccall.name);
 
   result = llvm_builder->CreateCall(fn->getFunctionType(), fn, {});
 }
@@ -367,7 +370,7 @@ void CodegenVisitor::visit(LoopStatement& loop) {
 void CodegenVisitor::visit(BreakStatement& brk) {
   auto current_loop_block = loop_block_stack.back();
   if (!current_loop_block.has_value()) {
-    throw std::runtime_error("Break codegen hit without loop");
+    throw CodegenError(brk.source_location, "Break codegen hit without loop");
   }
   llvm_builder->CreateBr(current_loop_block->end);
 }
@@ -375,7 +378,9 @@ void CodegenVisitor::visit(BreakStatement& brk) {
 void CodegenVisitor::visit(CycleStatement& cycle) {
   auto current_loop_block = loop_block_stack.back();
   if (!current_loop_block.has_value()) {
-    throw std::runtime_error("Cycle codegen hit without loop");
+    throw CodegenError(cycle.source_location, "Cycle codegen hit without loop");
   }
   llvm_builder->CreateBr(current_loop_block->body);
 }
+
+void CodegenVisitor::visit(UnaryExpression& unary_expr) {}

@@ -4,7 +4,6 @@
 
 #include "ast.h"
 #include "compile_error.h"
-#include "lexer.h"
 #include "parser.h"
 
 auto is_literal(const std::unique_ptr<Type>& type) -> bool {
@@ -100,7 +99,7 @@ auto get_literal_default(std::unique_ptr<Type>& type, SourceLocation loc)
     default:
       throw TypeError(
           loc, "Can't give a default literal value for non-literal type \"{}\"",
-          type->kind_name());
+          type->kind());
   }
 }
 
@@ -259,6 +258,7 @@ void TypeCheckVisitor::visit_statement_node(ASTNode* node) {
     case NodeKind::TypeExpression:
     case NodeKind::PointerTypeExpression:
     case NodeKind::IntLiteralExpression:
+    case NodeKind::UnaryExpression:
       throw TypeError(
           node->source_location,
           "visit_statement_node should never visit an expression node");
@@ -272,14 +272,14 @@ void TypeCheckVisitor::check_expr_int_literal(IntLiteralExpression* node,
       throw TypeError(
           node->source_location,
           "Integer literal ({}) cannot fit in type {} without data loss",
-          node->value.str(), expected->kind_name());
+          node->value.str(), expected->kind());
     }
 
     node->resolved_type = expected->clone();
   } else {
     throw TypeError(node->source_location,
                     "Cannot implicitly convert Integer literal ({}) to type {}",
-                    node->value.str(), expected->kind_name());
+                    node->value.str(), expected->kind());
   }
 }
 
@@ -287,14 +287,14 @@ void TypeCheckVisitor::check_expr_type_expr(TypeExpression* node,
                                             std::unique_ptr<Type>& expected) {
   throw TypeError(node->source_location,
                   "Attempt to check Type expression {} against type {}",
-                  node->name, expected->kind_name());
+                  node->name, expected->kind());
 }
 
 void TypeCheckVisitor::check_expr_pointer_type_expr(
     PointerTypeExpression* node, std::unique_ptr<Type>& expected) {
   throw TypeError(node->source_location,
                   "Attempt to check PointerType expression against type {}",
-                  expected->kind_name());
+                  expected->kind());
 }
 
 void TypeCheckVisitor::check_expr_func_call(FunctionCallExpression* node,
@@ -308,7 +308,7 @@ void TypeCheckVisitor::check_expr_func_call(FunctionCallExpression* node,
   if (it->second->kind() != expected->kind()) {
     throw TypeError(node->source_location,
                     "Expected {}, Got {} from call to function \"{}\"",
-                    expected->kind_name(), it->second->kind_name(), node->name);
+                    expected->kind(), it->second->kind(), node->name);
   }
 }
 
@@ -323,7 +323,7 @@ void TypeCheckVisitor::check_expr_var_expr(VariableExpression* node,
   if ((*found)->kind() != expected->kind()) {
     throw TypeError(node->source_location,
                     "Expected type {}, got {} from usage of variable \"{}\"",
-                    expected->kind_name(), (*found)->kind_name(), node->name);
+                    expected->kind(), (*found)->kind(), node->name);
   }
 
   node->resolved_type = expected->clone();
@@ -332,9 +332,15 @@ void TypeCheckVisitor::check_expr_var_expr(VariableExpression* node,
 void TypeCheckVisitor::check_expr_bin_expr(BinaryExpression* node,
                                            std::unique_ptr<Type>& expected) {
   // bool operators have a different operand type to resolved type
-  if (is_bool_operator(node->op)) {
-    // bools get inferred since their resolved type isn't related to the
-    // operand type
+  auto rule = binary_op_rule(node->op);
+  if ((rule.type_flags & expected->flags()).any()) {
+    throw TypeError(node->source_location, "Operator {} invalid for type {}",
+                    node->op, expected->kind());
+  }
+
+  if (rule.return_type == ReturnType::Bool) {
+    // bools get inferred since their resolved type isn't related to the operand
+    // type
     infer_expr_bin_expr(node);
   } else {
     node->resolved_type = expected->clone();
@@ -350,18 +356,21 @@ void TypeCheckVisitor::check_expr_float_literal(
   if (!is_float(expected)) {
     throw TypeError(node->source_location,
                     "Float literal ({}) cannot be converted to type {}",
-                    node->value, expected->kind_name());
+                    node->value, expected->kind());
   }
 
   if (!float_is_in_range(node->value, expected)) {
     throw TypeError(
         node->source_location,
         "Float literal ({}) cannot fit in type {} without data loss",
-        node->value, expected->kind_name());
+        node->value, expected->kind());
   }
 
   node->resolved_type = expected->clone();
 }
+
+void TypeCheckVisitor::check_unary_expr(UnaryExpression* node,
+                                        std::unique_ptr<Type>& expected) {}
 
 void TypeCheckVisitor::check_expr(ASTNode* node,
                                   std::unique_ptr<Type>& expected) {
@@ -387,6 +396,8 @@ void TypeCheckVisitor::check_expr(ASTNode* node,
     case NodeKind::FloatLiteralExpression:
       check_expr_float_literal(cast<FloatLiteralExpression>(node), expected);
       break;
+    case NodeKind::UnaryExpression:
+      check_unary_expr(cast<UnaryExpression>(node), expected);
     case NodeKind::CycleStatement:
       [[fallthrough]];
     case NodeKind::BreakStatement:
@@ -473,7 +484,7 @@ auto TypeCheckVisitor::resolve_literal_pair(const BinaryExpression* bin,
     throw TypeError(
         bin->source_location,
         "Left {} and right {} types are not compatible for operation {}",
-        left->kind_name(), right->kind_name(), token_type_to_str(bin->op));
+        left->kind(), right->kind(), bin->op);
   }
 
   auto found = type_factory(it->second);
@@ -506,11 +517,16 @@ auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node)
   if (left->kind() != right->kind()) {
     throw TypeError(node->source_location,
                     "Left {} and right {} types do not match for operation {}",
-                    left->kind_name(), right->kind_name(),
-                    token_type_to_str(node->op));
+                    left->kind(), right->kind(), node->op);
   }
 
-  if (is_bool_operator(node->op)) {
+  auto rule = binary_op_rule(node->op);
+  if ((rule.type_flags & left->flags()).any()) {
+    throw TypeError(node->source_location, "Operator {} invalid for type {}",
+                    node->op, left->kind());
+  }
+
+  if (rule.return_type == ReturnType::Bool) {
     resolved_type = std::make_unique<BoolType>();
 
     // bool must resolve now - no further context above
@@ -522,7 +538,6 @@ auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node)
     } else {
       operand_type = left->clone();
     }
-
   } else {
     if (operand_type == nullptr) {
       operand_type = left->clone();
@@ -538,6 +553,12 @@ auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node)
 auto TypeCheckVisitor::infer_expr_float_literal(FloatLiteralExpression* node)
     -> std::unique_ptr<Type> {
   return std::make_unique<FloatLiteralType>();
+}
+
+auto TypeCheckVisitor::infer_unary_expr(UnaryExpression* node)
+    -> std::unique_ptr<Type> {
+  node->resolved_type = infer_expr(node->operand.get());
+  return node->resolved_type->clone();
 }
 
 auto TypeCheckVisitor::infer_expr(ASTNode* node) -> std::unique_ptr<Type> {
@@ -556,6 +577,8 @@ auto TypeCheckVisitor::infer_expr(ASTNode* node) -> std::unique_ptr<Type> {
       return infer_expr_bin_expr(cast<BinaryExpression>(node));
     case NodeKind::FloatLiteralExpression:
       return infer_expr_float_literal(cast<FloatLiteralExpression>(node));
+    case NodeKind::UnaryExpression:
+      return infer_unary_expr(cast<UnaryExpression>(node));
 
     case NodeKind::CycleStatement:
       [[fallthrough]];

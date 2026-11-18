@@ -7,6 +7,7 @@ namespace mp = boost::multiprecision;
 #include <string>
 #include <vector>
 
+#include "operation.h"
 #include "source_location.h"
 #include "token_type.h"
 #include "types.h"
@@ -33,6 +34,7 @@ enum class NodeKind : uint8_t {
   LoopStatement,
   BreakStatement,
   CycleStatement,
+  UnaryExpression,
 };
 
 /*
@@ -77,14 +79,14 @@ struct FloatLiteralExpression : public ASTNode {
 struct BinaryExpression : public ASTNode {
   static constexpr NodeKind KIND = NodeKind::BinaryExpression;
 
-  BinaryExpression(TokenType op, std::unique_ptr<ASTNode> lhs,
+  BinaryExpression(BinaryOperation op, std::unique_ptr<ASTNode> lhs,
                    std::unique_ptr<ASTNode> rhs, SourceLocation source_location)
       : ASTNode(source_location, KIND),
         op(op),
         lhs(std::move(lhs)),
         rhs(std::move(rhs)) {}
 
-  TokenType op;
+  BinaryOperation op;
   std::unique_ptr<ASTNode> lhs, rhs;
   std::unique_ptr<Type> operand_type;
   std::unique_ptr<Type> resolved_type;
@@ -251,6 +253,18 @@ struct CycleStatement : public ASTNode {
   CycleStatement(SourceLocation source_location)
       : ASTNode(source_location, KIND) {}
 
+  void accept(Visitor& v) override;
+};
+
+struct UnaryExpression : public ASTNode {
+  static constexpr NodeKind KIND = NodeKind::UnaryExpression;
+  UnaryExpression(SourceLocation source_location, UnaryOperation op,
+                  std::unique_ptr<ASTNode> operand)
+      : ASTNode(source_location, KIND), op(op), operand(std::move(operand)) {}
+
+  UnaryOperation op;
+  std::unique_ptr<ASTNode> operand;
+  std::unique_ptr<Type> resolved_type;
   void accept(Visitor& v) override;
 };
 

@@ -1,6 +1,7 @@
 #ifndef PRINT_VISITOR_H
 #define PRINT_VISITOR_H
 #include <format>
+#include <magic_enum/magic_enum_format.hpp>
 #include <string>
 
 #include "ast.h"
@@ -31,11 +32,13 @@ struct PrettyPrinter {
     return Closer{*this};
   }
 
-  void add_value(std::string_view value) {
+  template <class T>
+  void add_value(T value) {
     output += std::format(" {}", value);
   }
 
-  void add_string_value(std::string_view value) {
+  template <class T>
+  void add_string_value(T value) {
     output += std::format(" \"{}\"", value);
   }
 
@@ -57,7 +60,7 @@ struct PrintVisitor : public Visitor {
                   const std::string& name = "ResolvedType") {
     if (resolved_type) {
       auto print_node = printer.add_node(name);
-      printer.add_value(resolved_type->kind_name());
+      printer.add_value(resolved_type->kind());
     }
   }
 
@@ -75,7 +78,7 @@ struct PrintVisitor : public Visitor {
 
   void visit(BinaryExpression& expr) override {
     auto print_node = printer.add_node("BinaryExpression");
-    printer.add_value(token_type_to_str(expr.op));
+    printer.add_value(expr.op);
     print_type(expr.resolved_type);
     print_type(expr.operand_type, "OperandType");
 
@@ -182,6 +185,12 @@ struct PrintVisitor : public Visitor {
   void visit(PointerTypeExpression& ptr) override {
     auto loop_stmt = printer.add_node("PointerTypeExpression");
     ptr.base_type->accept(*this);
+  }
+
+  void visit(UnaryExpression& unary_expr) override {
+    auto node = printer.add_node("UnaryExpression");
+    printer.add_value(unary_expr.op);
+    unary_expr.operand->accept(*this);
   }
 };
 
