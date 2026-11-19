@@ -318,3 +318,59 @@ TEST(TypeCheckTest, ThrowsWhenBreakOutsideLoop) {
                 HasSubstr("Break statement cannot appear outside a loop"));
   }
 }
+
+TEST(TypeCheckTest, InfersBoolFromNotUnary) {
+  CHECK_EXPR(node, R"(
+    y = not (1 == 2)
+  )");
+
+  auto y_decl = cast<VariableDeclarationStatement>(node.get());
+
+  ASSERT_NE(y_decl->declaration_type, nullptr);
+  ASSERT_EQ(y_decl->declaration_type->kind(), TypeKind::Bool);
+
+  auto unary = cast<UnaryExpression>(y_decl->value.get());
+  ASSERT_EQ(unary->resolved_type->kind(), TypeKind::Bool);
+
+  auto bin = cast<BinaryExpression>(unary->operand.get());
+  auto left = cast<IntLiteralExpression>(bin->lhs.get());
+  auto right = cast<IntLiteralExpression>(bin->rhs.get());
+
+  ASSERT_NE(left->resolved_type, nullptr);
+  EXPECT_EQ(left->resolved_type->kind(), TypeKind::Int32);
+
+  ASSERT_NE(right->resolved_type, nullptr);
+  EXPECT_EQ(right->resolved_type->kind(), TypeKind::Int32);
+}
+
+TEST(TypeCheckTest, InfersInt32FromNegativeLiteral) {
+  CHECK_EXPR(node, "y = -100");
+
+  auto y_decl = cast<VariableDeclarationStatement>(node.get());
+
+  ASSERT_NE(y_decl->declaration_type, nullptr);
+  ASSERT_EQ(y_decl->declaration_type->kind(), TypeKind::Int32);
+
+  auto unary = cast<UnaryExpression>(y_decl->value.get());
+  ASSERT_EQ(unary->resolved_type->kind(), TypeKind::Int32);
+
+  auto operand = cast<IntLiteralExpression>(unary->operand.get());
+  ASSERT_NE(operand->resolved_type, nullptr);
+  EXPECT_EQ(operand->resolved_type->kind(), TypeKind::Int32);
+}
+
+TEST(TypeCheckTest, InfersFloat64FromNegativeLiteral) {
+  CHECK_EXPR(node, "y = -100.0");
+
+  auto y_decl = cast<VariableDeclarationStatement>(node.get());
+
+  ASSERT_NE(y_decl->declaration_type, nullptr);
+  ASSERT_EQ(y_decl->declaration_type->kind(), TypeKind::Float64);
+
+  auto unary = cast<UnaryExpression>(y_decl->value.get());
+  ASSERT_EQ(unary->resolved_type->kind(), TypeKind::Float64);
+
+  auto operand = cast<FloatLiteralExpression>(unary->operand.get());
+  ASSERT_NE(operand->resolved_type, nullptr);
+  EXPECT_EQ(operand->resolved_type->kind(), TypeKind::Float64);
+}

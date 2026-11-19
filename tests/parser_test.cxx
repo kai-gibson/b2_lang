@@ -369,7 +369,7 @@ TEST(ParserTest, ParsesPointerTypeDecl) {
 }
 
 TEST(ParserTest, ParsersUnaryExpression) {
-  PARSE_EXPR(node, "x = not 1 == 1");
+  PARSE_EXPR(node, "x = not (1 == 1)");
 
   auto assign = cast<VariableDeclarationStatement>(node.get());
   auto not_ = cast<UnaryExpression>(assign->value.get());
