@@ -253,11 +253,12 @@ auto str_to_type(const std::string& s) -> std::unique_ptr<Type>;
 
 enum class ReturnType : uint8_t { Same, Bool };
 
-struct BinaryRule {
+struct OperationRule {
   ReturnType return_type;
   bitset<TypeFlag> type_flags;
 };
 
-auto binary_op_rule(BinaryOperation op) -> BinaryRule;
+auto binary_op_rule(BinaryOperation op) -> OperationRule;
+auto unary_op_rule(UnaryOperation op) -> OperationRule;
 
 #endif  // TYPES_H

@@ -367,3 +367,14 @@ TEST(ParserTest, ParsesPointerTypeDecl) {
 
   ASSERT_EQ(type_id->name, "Int32");
 }
+
+TEST(ParserTest, ParsersUnaryExpression) {
+  PARSE_EXPR(node, "x = not 1 == 1");
+
+  auto assign = cast<VariableDeclarationStatement>(node.get());
+  auto not_ = cast<UnaryExpression>(assign->value.get());
+  auto bin_expr = cast<BinaryExpression>(not_->operand.get());
+
+  ASSERT_NO_FATAL_FAILURE(cast<IntLiteralExpression>(bin_expr->lhs.get()));
+  ASSERT_NO_FATAL_FAILURE(cast<IntLiteralExpression>(bin_expr->rhs.get()));
+}

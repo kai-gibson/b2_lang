@@ -73,7 +73,7 @@ auto Type::flags() -> bitset<TypeFlag> {
   }
 }
 
-auto binary_op_rule(BinaryOperation op) -> BinaryRule {
+auto binary_op_rule(BinaryOperation op) -> OperationRule {
   switch (op) {
     case BinaryOperation::Add:
     case BinaryOperation::Subtract:
@@ -95,5 +95,15 @@ auto binary_op_rule(BinaryOperation op) -> BinaryRule {
     case BinaryOperation::And:
     case BinaryOperation::Or:
       return {.return_type = ReturnType::Bool, .type_flags = {TypeFlag::Bool}};
+  }
+}
+
+auto unary_op_rule(UnaryOperation op) -> OperationRule {
+  switch (op) {
+    case UnaryOperation::Negative:
+      return {.return_type = ReturnType::Same,
+              .type_flags = {TypeFlag::Integer, TypeFlag::Float}};
+    case UnaryOperation::Not:
+      return {.return_type = ReturnType::Same, .type_flags = {TypeFlag::Bool}};
   }
 }

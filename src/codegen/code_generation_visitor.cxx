@@ -383,4 +383,8 @@ void CodegenVisitor::visit(CycleStatement& cycle) {
   llvm_builder->CreateBr(current_loop_block->body);
 }
 
-void CodegenVisitor::visit(UnaryExpression& unary_expr) {}
+void CodegenVisitor::visit(UnaryExpression& unary_expr) {
+  auto operand = emit(*unary_expr.operand);
+
+  result = emit_unary(*llvm_builder, unary_expr, operand);
+}

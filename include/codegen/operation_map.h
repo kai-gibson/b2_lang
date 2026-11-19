@@ -19,4 +19,16 @@ auto emit_bool_binary(llvm::IRBuilder<>& builder, BinaryExpression& expr,
 auto emit_binary(llvm::IRBuilder<>& builder, BinaryExpression& expr,
                  llvm::Value* left, llvm::Value* right) -> llvm::Value*;
 
+auto emit_unary(llvm::IRBuilder<>& builder, UnaryExpression& expr,
+                llvm::Value* operand) -> llvm::Value*;
+
+auto emit_int_unary(llvm::IRBuilder<>& builder, UnaryExpression& expr,
+                    llvm::Value* operand) -> llvm::Value*;
+
+auto emit_float_unary(llvm::IRBuilder<>& builder, UnaryExpression& expr,
+                      llvm::Value* operand) -> llvm::Value*;
+
+auto emit_bool_unary(llvm::IRBuilder<>& builder, UnaryExpression& expr,
+                     llvm::Value* operand) -> llvm::Value*;
+
 #endif  // OPERATOR_MAP_H

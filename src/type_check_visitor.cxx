@@ -371,7 +371,19 @@ void TypeCheckVisitor::check_expr_float_literal(
 }
 
 void TypeCheckVisitor::check_unary_expr(UnaryExpression* node,
-                                        std::unique_ptr<Type>& expected) {}
+                                        std::unique_ptr<Type>& expected) {
+  auto rule = unary_op_rule(node->op);
+
+  if (!(rule.type_flags & expected->flags()).any()) {
+    throw TypeError(node->source_location,
+                    "Unary operation {} invalid for type {}", node->op,
+                    node->resolved_type->kind());
+  }
+
+  node->resolved_type = expected->clone();
+
+  check_expr(node->operand.get(), expected);
+}
 
 void TypeCheckVisitor::check_expr(ASTNode* node,
                                   std::unique_ptr<Type>& expected) {
@@ -399,6 +411,8 @@ void TypeCheckVisitor::check_expr(ASTNode* node,
       break;
     case NodeKind::UnaryExpression:
       check_unary_expr(cast<UnaryExpression>(node), expected);
+      break;
+
     case NodeKind::CycleStatement:
       [[fallthrough]];
     case NodeKind::BreakStatement:
@@ -559,6 +573,14 @@ auto TypeCheckVisitor::infer_expr_float_literal(FloatLiteralExpression* node)
 auto TypeCheckVisitor::infer_unary_expr(UnaryExpression* node)
     -> std::unique_ptr<Type> {
   node->resolved_type = infer_expr(node->operand.get());
+
+  auto rule = unary_op_rule(node->op);
+  if (!(rule.type_flags & node->resolved_type->flags()).any()) {
+    throw TypeError(node->source_location,
+                    "Unary operation {} invalid for type {}", node->op,
+                    node->resolved_type->kind());
+  }
+
   return node->resolved_type->clone();
 }
 

@@ -190,6 +190,7 @@ struct PrintVisitor : public Visitor {
   void visit(UnaryExpression& unary_expr) override {
     auto node = printer.add_node("UnaryExpression");
     printer.add_value(unary_expr.op);
+    print_type(unary_expr.resolved_type);
     unary_expr.operand->accept(*this);
   }
 };

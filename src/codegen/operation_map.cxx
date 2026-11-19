@@ -103,3 +103,55 @@ auto emit_binary(llvm::IRBuilder<>& builder, BinaryExpression& expr,
                        expr.resolved_type->kind(), expr.op);
   }
 }
+
+auto emit_int_unary(llvm::IRBuilder<>& builder, UnaryExpression& expr,
+                    llvm::Value* operand) -> llvm::Value* {
+  switch (expr.op) {
+    case UnaryOperation::Negative:
+      return builder.CreateNeg(operand, "negtmp");
+    case UnaryOperation::Not:
+      throw CodegenError(expr.source_location,
+                         "Type {} does not support binary operation {}",
+                         expr.resolved_type->kind(), expr.op);
+  }
+}
+
+auto emit_float_unary(llvm::IRBuilder<>& builder, UnaryExpression& expr,
+                      llvm::Value* operand) -> llvm::Value* {
+  switch (expr.op) {
+    case UnaryOperation::Negative:
+      return builder.CreateFNeg(operand, "negtmp");
+    case UnaryOperation::Not:
+      throw CodegenError(expr.source_location,
+                         "Type {} does not support binary operation {}",
+                         expr.resolved_type->kind(), expr.op);
+  }
+}
+
+auto emit_bool_unary(llvm::IRBuilder<>& builder, UnaryExpression& expr,
+                     llvm::Value* operand) -> llvm::Value* {
+  switch (expr.op) {
+    case UnaryOperation::Negative:
+      throw CodegenError(expr.source_location,
+                         "Type {} does not support binary operation {}",
+                         expr.resolved_type->kind(), expr.op);
+    case UnaryOperation::Not:
+      return builder.CreateNot(operand, "nottmp");
+  }
+}
+
+auto emit_unary(llvm::IRBuilder<>& builder, UnaryExpression& expr,
+                llvm::Value* operand) -> llvm::Value* {
+  auto type_flags = expr.resolved_type->flags();
+  if (type_flags.test(TypeFlag::Integer)) {
+    return emit_int_unary(builder, expr, operand);
+  } else if (type_flags.test(TypeFlag::Float)) {
+    return emit_float_unary(builder, expr, operand);
+  } else if (type_flags.test(TypeFlag::Bool)) {
+    return emit_bool_unary(builder, expr, operand);
+  } else {
+    throw CodegenError(expr.source_location,
+                       "Type {} does not support binary operation {}",
+                       expr.resolved_type->kind(), expr.op);
+  }
+}
