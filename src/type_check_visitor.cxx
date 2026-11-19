@@ -333,10 +333,6 @@ void TypeCheckVisitor::check_expr_bin_expr(BinaryExpression* node,
                                            std::unique_ptr<Type>& expected) {
   // bool operators have a different operand type to resolved type
   auto rule = binary_op_rule(node->op);
-  if (!(rule.type_flags & expected->flags()).any()) {
-    throw TypeError(node->source_location, "Operator {} invalid for type {}",
-                    node->op, expected->kind());
-  }
 
   if (rule.return_type == ReturnType::Bool) {
     // bools get inferred since their resolved type isn't related to the operand
@@ -345,6 +341,11 @@ void TypeCheckVisitor::check_expr_bin_expr(BinaryExpression* node,
   } else {
     node->resolved_type = expected->clone();
     node->operand_type = expected->clone();
+
+    if (!(rule.type_flags & expected->flags()).any()) {
+      throw TypeError(node->source_location, "Operator {} invalid for type {}",
+                      node->op, expected->kind());
+    }
 
     check_expr(node->lhs.get(), expected);
     check_expr(node->rhs.get(), expected);

@@ -1,7 +1,6 @@
 #include "lexer.h"
 
 #include <cctype>
-#include <iostream>
 
 #include "compile_error.h"
 

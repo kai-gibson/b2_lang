@@ -89,7 +89,7 @@ auto binary_op_rule(BinaryOperation op) -> BinaryRule {
               .type_flags = {TypeFlag::Integer, TypeFlag::Float}};
     case BinaryOperation::Equal:
     case BinaryOperation::NotEqual:
-      return {.return_type = ReturnType::Same,
+      return {.return_type = ReturnType::Bool,
               .type_flags = {TypeFlag::Bool, TypeFlag::Ptr, TypeFlag::Integer,
                              TypeFlag::Float}};
     case BinaryOperation::And:

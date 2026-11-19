@@ -11,7 +11,6 @@
 #include "source_location.h"
 #include "token_type.h"
 
-// free pure functions
 auto is_identifier_char(char chr) -> bool;
 auto is_symbol_char(char chr) -> bool;
 
