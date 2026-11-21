@@ -261,4 +261,11 @@ struct OperationRule {
 auto binary_op_rule(BinaryOperation op) -> OperationRule;
 auto unary_op_rule(UnaryOperation op) -> OperationRule;
 
+template <class T>
+auto cast(Type* type) -> T* {
+  assert(type->kind() == T::KIND);
+
+  return static_cast<T*>(type);
+}
+
 #endif  // TYPES_H

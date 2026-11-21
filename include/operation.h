@@ -23,6 +23,7 @@ enum class BinaryOperation : uint8_t {
 enum class UnaryOperation : uint8_t {
   Not,
   Negative,
+  AddressOf,
 };
 
 auto token_to_unary_op(TokenType op) -> std::optional<UnaryOperation>;

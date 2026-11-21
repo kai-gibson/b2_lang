@@ -26,6 +26,8 @@ enum class TokenType : int8_t {
   NotEquals,
   LSquareBracket,
   RSquareBracket,
+  DotStar,
+  Ampersand,
 
   // Keywords
   Set,
@@ -46,45 +48,6 @@ enum class TokenType : int8_t {
   // EOF
   EndOfFile,
 };
-
-constexpr auto TOKEN_TYPE_STR = to_static_map<TokenType, std::string_view>({
-    {TokenType::Plus, "Plus"},
-    {TokenType::Minus, "Minus"},
-    {TokenType::Asterisk, "Asterisk"},
-    {TokenType::ForwardSlash, "ForwardSlash"},
-    {TokenType::FloatLiteral, "FloatLiteral"},
-    {TokenType::IntLiteral, "IntLiteral"},
-    {TokenType::StringLiteral, "StringLiteral"},
-    {TokenType::Identifier, "Identifier"},
-    {TokenType::LParen, "LParen"},
-    {TokenType::RParen, "RParen"},
-    {TokenType::Assignment, "Assignment"},
-    {TokenType::Colon, "Colon"},
-    {TokenType::LessThan, "LessThan"},
-    {TokenType::GreaterThan, "GreaterThan"},
-    {TokenType::LessThanEquals, "LessThanEquals"},
-    {TokenType::GreaterThanEquals, "GreaterThanEquals"},
-    {TokenType::Equals, "Equals"},
-    {TokenType::NotEquals, "NotEquals"},
-    {TokenType::LSquareBracket, "LSquareBracket"},
-    {TokenType::RSquareBracket, "RSquareBracket"},
-    {TokenType::Set, "Set"},
-    {TokenType::Show, "Show"},
-    {TokenType::Function, "Function"},
-    {TokenType::End, "End"},
-    {TokenType::Return, "Return"},
-    {TokenType::And, "And"},
-    {TokenType::Or, "Or"},
-    {TokenType::If, "If"},
-    {TokenType::Else, "Else"},
-    {TokenType::Not, "Not"},
-    {TokenType::ElseIf, "ElseIf"},
-    {TokenType::EndOfFile, "EndOfFile"},
-    {TokenType::Loop, "Loop"},
-    {TokenType::Break, "Break"},
-    {TokenType::In, "In"},
-    {TokenType::Cycle, "Cycle"},
-});
 
 constexpr auto KEYWORDS = to_static_map<std::string_view, TokenType>({
     {"set", TokenType::Set},
@@ -121,16 +84,18 @@ constexpr auto SYMBOLS = to_static_map<std::string_view, TokenType>({
     {"!=", TokenType::NotEquals},
     {"[", TokenType::LSquareBracket},
     {"]", TokenType::RSquareBracket},
+    {".*", TokenType::DotStar},
+    {"&", TokenType::Ampersand},
 });
 
 constexpr auto PREFIX_TOKENS = to_static_set<TokenType>({
     TokenType::Minus,
     TokenType::Not,
+    TokenType::Ampersand,
 });
 
-constexpr auto token_type_to_str(TokenType t) -> const std::string_view {
-  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-  return TOKEN_TYPE_STR.find(t)->get();
-}
+constexpr auto POSTFIX_TOKENS = to_static_set<TokenType>({
+    TokenType::DotStar,
+});
 
 #endif  // TOKEN_TYPE_H

@@ -374,3 +374,18 @@ TEST(TypeCheckTest, InfersFloat64FromNegativeLiteral) {
   ASSERT_NE(operand->resolved_type, nullptr);
   EXPECT_EQ(operand->resolved_type->kind(), TypeKind::Float64);
 }
+
+TEST(TypeCheckTest, ChecksPointerFromAddressUnary) {
+  CHECK_STMTS(stmts, R"(
+    x = 10
+    ptr: *Int32 = &10
+  )");
+
+  ASSERT_EQ(stmts.size(), 2);
+  auto x_decl = cast<VariableDeclarationStatement>(stmts.at(0).get());
+  ASSERT_NE(x_decl->declaration_type, nullptr);
+  ASSERT_EQ(x_decl->declaration_type, TypeKind::Pointer);
+
+  auto ptr = cast<PointerType>(x_decl->declaration_type.get());
+  ASSERT_EQ(ptr->base->kind(), TypeKind::Int32);
+}

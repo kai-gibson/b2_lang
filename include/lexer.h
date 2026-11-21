@@ -3,6 +3,7 @@
 #define LEXER_H
 
 #include <cctype>
+#include <magic_enum/magic_enum.hpp>
 #include <ostream>
 #include <string>
 #include <string_view>
@@ -10,6 +11,7 @@
 
 #include "source_location.h"
 #include "token_type.h"
+using magic_enum::enum_name;
 
 auto is_identifier_char(char chr) -> bool;
 auto is_symbol_char(char chr) -> bool;
@@ -37,7 +39,7 @@ struct Token {
 };
 
 inline auto operator<<(std::ostream& os, const Token& token) -> std::ostream& {
-  return os << "Token{ .type=" << token_type_to_str(token.type) << " .value=\""
+  return os << "Token{ .type=" << enum_name(token.type) << " .value=\""
             << token.value << "\"}";
 }
 
