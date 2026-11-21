@@ -401,6 +401,31 @@ TEST(TypeCheckTest, ChecksPointerFromAddressUnary) {
   ASSERT_EQ(addr_of_type->base->kind(), TypeKind::Int32);
 }
 
+TEST(TypeCheckTest, InfersPointerFromAddressUnary) {
+  CHECK_STMTS(stmts, R"(
+    x = 10
+    ptr = &x
+  )");
+
+  ASSERT_EQ(stmts.size(), 2);
+  auto x_decl = cast<VariableDeclarationStatement>(stmts.at(0).get());
+  ASSERT_NE(x_decl->declaration_type, nullptr);
+  ASSERT_EQ(x_decl->declaration_type->kind(), TypeKind::Int32);
+
+  auto ptr_decl = cast<VariableDeclarationStatement>(stmts.at(1).get());
+  ASSERT_NE(ptr_decl->declaration_type, nullptr);
+  ASSERT_EQ(ptr_decl->declaration_type->kind(), TypeKind::Pointer);
+
+  auto ptr_decl_type = cast<PointerType>(ptr_decl->declaration_type.get());
+  ASSERT_EQ(ptr_decl_type->base->kind(), TypeKind::Int32);
+
+  auto addr_of = cast<AddressOfExpression>(ptr_decl->value.get());
+  ASSERT_EQ(addr_of->resolved_type->kind(), TypeKind::Pointer);
+
+  auto addr_of_type = cast<PointerType>(addr_of->resolved_type.get());
+  ASSERT_EQ(addr_of_type->base->kind(), TypeKind::Int32);
+}
+
 TEST(TypeCheckTest, ThrowsOnNonPointerFromAddressUnary) {
   using ::testing::HasSubstr;
   using ::testing::Not;
