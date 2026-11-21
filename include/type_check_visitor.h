@@ -168,6 +168,6 @@ class TypeCheckVisitor {
   uint32_t loop_depth;
 };
 
-auto is_place_expr(NodeKind kind) -> bool;
+auto verify_place_expr(ASTNode* place_expr) -> void;
 
 #endif  // TYPE_CHECK_VISITOR_H

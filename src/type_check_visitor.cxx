@@ -103,12 +103,15 @@ auto get_literal_default(std::unique_ptr<Type>& type, SourceLocation loc)
   }
 }
 
-auto is_place_expr(NodeKind kind) -> bool {
-  switch (kind) {
+auto verify_place_expr(ASTNode* node) -> void {
+  switch (node->kind()) {
     case NodeKind::VariableExpression:
-      return true;
+      return;
     default:
-      return false;
+      throw TypeError(
+          node->source_location,
+          "Cannot use address of operator '&' on value expression: {}",
+          node->kind());
   }
 }
 
@@ -406,12 +409,7 @@ void TypeCheckVisitor::check_address_of_expr(AddressOfExpression* node,
 
   auto type_ptr = cast<PointerType>(expected.get());
 
-  if (!is_place_expr(node->place_expr->kind())) {
-    throw TypeError(
-        node->place_expr->source_location,
-        "Cannot use address of operator '&' on value expression: {}",
-        node->place_expr->kind());
-  }
+  verify_place_expr(node->place_expr.get());
 
   auto type_place_expr = infer_expr(node->place_expr.get());
 
@@ -629,7 +627,13 @@ auto TypeCheckVisitor::infer_unary_expr(UnaryExpression* node)
 
 auto TypeCheckVisitor::infer_address_of_expr(AddressOfExpression* node)
     -> std::unique_ptr<Type> {
-  throw std::runtime_error("not implemented");
+  verify_place_expr(node->place_expr.get());
+
+  auto type = std::make_unique<PointerType>();
+  type->base = infer_expr(node->place_expr.get());
+  node->resolved_type = type->clone();
+
+  return type;
 }
 
 auto TypeCheckVisitor::infer_expr(ASTNode* node) -> std::unique_ptr<Type> {

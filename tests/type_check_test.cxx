@@ -456,3 +456,35 @@ TEST(TypeCheckTest, ThrowsOnAddressOfValueExpr) {
                                     "value expression: IntLiteralExpression"));
   }
 }
+
+TEST(TypeCheckTest, ThrowsOnAddressOfInferValueExpr) {
+  using ::testing::HasSubstr;
+  using ::testing::Not;
+
+  try {
+    CHECK_STMTS(stmts, R"(
+      ptr = &10
+    )");
+    ASSERT_TRUE(false);
+  } catch (TypeError& e) {
+    ASSERT_THAT(e.what(), HasSubstr("Cannot use address of operator '&' on "
+                                    "value expression: IntLiteralExpression"));
+  }
+}
+
+TEST(TypeCheckTest, ThrowsOnAddressOfWrongPlaceExprType) {
+  using ::testing::HasSubstr;
+  using ::testing::Not;
+
+  try {
+    CHECK_STMTS(stmts, R"(
+      x: Int16 = 1
+      ptr: *Int32 = &x
+    )");
+    ASSERT_TRUE(false);
+  } catch (TypeError& e) {
+    ASSERT_THAT(
+        e.what(),
+        HasSubstr("Expected place expression to have type Int32. Got Int16"));
+  }
+}
