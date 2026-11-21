@@ -272,6 +272,7 @@ void TypeCheckVisitor::visit_statement_node(ASTNode* node) {
     case NodeKind::IntLiteralExpression:
     case NodeKind::UnaryExpression:
     case NodeKind::AddressOfExpression:
+    case NodeKind::DereferenceExpression:
       throw TypeError(
           node->source_location,
           "visit_statement_node should never visit an expression node");
@@ -423,6 +424,28 @@ void TypeCheckVisitor::check_address_of_expr(AddressOfExpression* node,
   node->resolved_type = expected->clone();
 }
 
+void TypeCheckVisitor::check_deref_expr(DereferenceExpression* node,
+                                        std::unique_ptr<Type>& expected) {
+  auto ptr = infer_expr(node->pointer.get());
+  if (ptr->kind() != TypeKind::Pointer) {
+    throw TypeError(node->source_location,
+                    "Dereference operator '.*' only applies to pointer types. "
+                    "Here it was applied to: {}",
+                    ptr->kind());
+  }
+
+  auto ptr_type = cast<PointerType>(ptr.get());
+
+  auto inner_type = ptr_type->base->clone();
+  if (inner_type->kind() != expected->kind()) {
+    throw TypeError(node->source_location,
+                    "Expected type {}, got {} from dereference expression",
+                    expected->kind(), inner_type->kind());
+  }
+
+  node->resolved_type = expected->clone();
+}
+
 void TypeCheckVisitor::check_expr(ASTNode* node,
                                   std::unique_ptr<Type>& expected) {
   switch (node->kind()) {
@@ -452,6 +475,9 @@ void TypeCheckVisitor::check_expr(ASTNode* node,
       break;
     case NodeKind::AddressOfExpression:
       check_address_of_expr(cast<AddressOfExpression>(node), expected);
+      break;
+    case NodeKind::DereferenceExpression:
+      check_deref_expr(cast<DereferenceExpression>(node), expected);
       break;
 
     case NodeKind::CycleStatement:
@@ -636,6 +662,23 @@ auto TypeCheckVisitor::infer_address_of_expr(AddressOfExpression* node)
   return type;
 }
 
+auto TypeCheckVisitor::infer_deref_expr(DereferenceExpression* node)
+    -> std::unique_ptr<Type> {
+  auto ptr = infer_expr(node->pointer.get());
+  if (ptr->kind() != TypeKind::Pointer) {
+    throw TypeError(node->source_location,
+                    "Dereference operator '.*' only applies to pointer types. "
+                    "Here it was applied to: {}",
+                    ptr->kind());
+  }
+
+  auto ptr_type = cast<PointerType>(ptr.get());
+
+  node->resolved_type = ptr_type->base->clone();
+
+  return ptr_type->base->clone();
+}
+
 auto TypeCheckVisitor::infer_expr(ASTNode* node) -> std::unique_ptr<Type> {
   switch (node->kind()) {
     case NodeKind::IntLiteralExpression:
@@ -656,6 +699,8 @@ auto TypeCheckVisitor::infer_expr(ASTNode* node) -> std::unique_ptr<Type> {
       return infer_unary_expr(cast<UnaryExpression>(node));
     case NodeKind::AddressOfExpression:
       return infer_address_of_expr(cast<AddressOfExpression>(node));
+    case NodeKind::DereferenceExpression:
+      return infer_deref_expr(cast<DereferenceExpression>(node));
 
     case NodeKind::CycleStatement:
       [[fallthrough]];

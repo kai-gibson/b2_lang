@@ -488,3 +488,33 @@ TEST(TypeCheckTest, ThrowsOnAddressOfWrongPlaceExprType) {
         HasSubstr("Expected place expression to have type Int32. Got Int16"));
   }
 }
+
+TEST(TypeCheckTest, InfersInt32FromDeref) {
+  CHECK_STMTS(stmts, R"(
+    x = 10
+    ptr = &x
+    y = ptr.*
+  )");
+
+  ASSERT_EQ(stmts.size(), 3);
+
+  auto y_decl = cast<VariableDeclarationStatement>(stmts.at(2).get());
+  auto deref = cast<DereferenceExpression>(y_decl->value.get());
+
+  ASSERT_EQ(deref->resolved_type->kind(), TypeKind::Int32);
+}
+
+TEST(TypeCheckTest, ChecksInt32FromDeref) {
+  CHECK_STMTS(stmts, R"(
+    x = 10
+    ptr = &x
+    y: Int32 = ptr.*
+  )");
+
+  ASSERT_EQ(stmts.size(), 3);
+
+  auto y_decl = cast<VariableDeclarationStatement>(stmts.at(2).get());
+  auto deref = cast<DereferenceExpression>(y_decl->value.get());
+
+  ASSERT_EQ(deref->resolved_type->kind(), TypeKind::Int32);
+}

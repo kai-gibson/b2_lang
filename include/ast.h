@@ -36,6 +36,7 @@ enum class NodeKind : uint8_t {
   CycleStatement,
   UnaryExpression,
   AddressOfExpression,
+  DereferenceExpression,
 };
 
 /*
@@ -281,7 +282,7 @@ struct AddressOfExpression : public ASTNode {
 };
 
 struct DereferenceExpression : public ASTNode {
-  static constexpr NodeKind KIND = NodeKind::AddressOfExpression;
+  static constexpr NodeKind KIND = NodeKind::DereferenceExpression;
   DereferenceExpression(SourceLocation source_location,
                         std::unique_ptr<ASTNode> pointer)
       : ASTNode(source_location, KIND), pointer(std::move(pointer)) {}
