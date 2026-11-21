@@ -73,39 +73,41 @@ auto Type::flags() -> bitset<TypeFlag> {
   }
 }
 
-auto binary_op_rule(BinaryOperation op) -> OperationRule {
+auto binary_op_rule(BinaryOperation op) -> BinaryOpRule {
   switch (op) {
     case BinaryOperation::Add:
     case BinaryOperation::Subtract:
     case BinaryOperation::Multiply:
     case BinaryOperation::Divide:
-      return {.return_type = ReturnType::Same,
+      return {.return_type = BinaryReturnType::Same,
               .type_flags = {TypeFlag::Integer, TypeFlag::Float}};
     case BinaryOperation::Less:
     case BinaryOperation::LessEqual:
     case BinaryOperation::Greater:
     case BinaryOperation::GreaterEqual:
-      return {.return_type = ReturnType::Bool,
+      return {.return_type = BinaryReturnType::Bool,
               .type_flags = {TypeFlag::Integer, TypeFlag::Float}};
     case BinaryOperation::Equal:
     case BinaryOperation::NotEqual:
-      return {.return_type = ReturnType::Bool,
+      return {.return_type = BinaryReturnType::Bool,
               .type_flags = {TypeFlag::Bool, TypeFlag::Ptr, TypeFlag::Integer,
                              TypeFlag::Float}};
     case BinaryOperation::And:
     case BinaryOperation::Or:
-      return {.return_type = ReturnType::Bool, .type_flags = {TypeFlag::Bool}};
+      return {.return_type = BinaryReturnType::Bool,
+              .type_flags = {TypeFlag::Bool}};
   }
 }
 
-auto unary_op_rule(UnaryOperation op) -> OperationRule {
+auto set_all() -> bitset<TypeFlag> { return bitset<TypeFlag>().set(); }
+
+auto unary_op_rule(UnaryOperation op) -> UnaryOpRule {
   switch (op) {
     case UnaryOperation::Negative:
-      return {.return_type = ReturnType::Same,
+      return {.return_type = UnaryReturnType::Same,
               .type_flags = {TypeFlag::Integer, TypeFlag::Float}};
     case UnaryOperation::Not:
-      return {.return_type = ReturnType::Same, .type_flags = {TypeFlag::Bool}};
-    case UnaryOperation::AddressOf:
-      throw std::runtime_error("in progress");
+      return {.return_type = UnaryReturnType::Same,
+              .type_flags = {TypeFlag::Bool}};
   }
 }

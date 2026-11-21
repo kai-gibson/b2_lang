@@ -120,8 +120,9 @@ auto Parser::parse_prefix_expression() -> std::unique_ptr<ASTNode> {
   switch (peek().type) {
     case TokenType::Minus:
     case TokenType::Not:
-    case TokenType::Ampersand:
       return parse_unary_expression();
+    case TokenType::Ampersand:
+      return parse_address_of_expression();
     default:
       throw ParseError(peek().source_location,
                        "Unexpected prefix expression: {}", peek().type);
@@ -348,4 +349,12 @@ auto Parser::parse_unary_expression() -> std::unique_ptr<ASTNode> {
 
   return std::make_unique<UnaryExpression>(token.source_location, *op,
                                            parse_expression(PREFIX_PRECEDENCE));
+}
+
+auto Parser::parse_address_of_expression() -> std::unique_ptr<ASTNode> {
+  auto token = peek();
+  advance();
+
+  return std::make_unique<AddressOfExpression>(
+      token.source_location, parse_expression(PREFIX_PRECEDENCE));
 }

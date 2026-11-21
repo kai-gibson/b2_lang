@@ -64,6 +64,7 @@ class Parser {
   auto parse_cycle_statement() -> std::unique_ptr<ASTNode>;
   auto parse_prefix_expression() -> std::unique_ptr<ASTNode>;
   auto parse_unary_expression() -> std::unique_ptr<ASTNode>;
+  auto parse_address_of_expression() -> std::unique_ptr<ASTNode>;
 
   // vars
   const Tokens& tokens;

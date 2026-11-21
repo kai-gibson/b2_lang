@@ -251,15 +251,21 @@ struct BoolType : public Type {
 auto type_factory(TypeKind t) -> std::unique_ptr<Type>;
 auto str_to_type(const std::string& s) -> std::unique_ptr<Type>;
 
-enum class ReturnType : uint8_t { Same, Bool };
+enum class BinaryReturnType : uint8_t { Same, Bool };
+enum class UnaryReturnType : uint8_t { Same };
 
-struct OperationRule {
-  ReturnType return_type;
+struct BinaryOpRule {
+  BinaryReturnType return_type;
   bitset<TypeFlag> type_flags;
 };
 
-auto binary_op_rule(BinaryOperation op) -> OperationRule;
-auto unary_op_rule(UnaryOperation op) -> OperationRule;
+struct UnaryOpRule {
+  UnaryReturnType return_type;
+  bitset<TypeFlag> type_flags;
+};
+
+auto binary_op_rule(BinaryOperation op) -> BinaryOpRule;
+auto unary_op_rule(UnaryOperation op) -> UnaryOpRule;
 
 template <class T>
 auto cast(Type* type) -> T* {

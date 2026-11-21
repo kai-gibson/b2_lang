@@ -37,8 +37,6 @@ auto token_to_unary_op(TokenType op) -> std::optional<UnaryOperation> {
       return UnaryOperation::Not;
     case TokenType::Minus:
       return UnaryOperation::Negative;
-    case TokenType::Ampersand:
-      return UnaryOperation::AddressOf;
     default:
       return std::nullopt;
   }

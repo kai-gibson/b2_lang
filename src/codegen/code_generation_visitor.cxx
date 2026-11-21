@@ -389,3 +389,5 @@ void CodegenVisitor::visit(UnaryExpression& unary_expr) {
 
   result = emit_unary(*llvm_builder, unary_expr, operand);
 }
+
+void CodegenVisitor::visit(AddressOfExpression& addr) {}

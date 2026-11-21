@@ -103,6 +103,15 @@ auto get_literal_default(std::unique_ptr<Type>& type, SourceLocation loc)
   }
 }
 
+auto is_place_expr(NodeKind kind) -> bool {
+  switch (kind) {
+    case NodeKind::VariableExpression:
+      return true;
+    default:
+      return false;
+  }
+}
+
 VariableScopeStack::VariableScopeStack() { _scope_map.emplace_back(); }
 
 auto VariableScopeStack::find(const std::string& key)
@@ -259,6 +268,7 @@ void TypeCheckVisitor::visit_statement_node(ASTNode* node) {
     case NodeKind::PointerTypeExpression:
     case NodeKind::IntLiteralExpression:
     case NodeKind::UnaryExpression:
+    case NodeKind::AddressOfExpression:
       throw TypeError(
           node->source_location,
           "visit_statement_node should never visit an expression node");
@@ -334,7 +344,7 @@ void TypeCheckVisitor::check_expr_bin_expr(BinaryExpression* node,
   // bool operators have a different operand type to resolved type
   auto rule = binary_op_rule(node->op);
 
-  if (rule.return_type == ReturnType::Bool) {
+  if (rule.return_type == BinaryReturnType::Bool) {
     // bools get inferred since their resolved type isn't related to the operand
     // type
     infer_expr_bin_expr(node);
@@ -385,6 +395,36 @@ void TypeCheckVisitor::check_unary_expr(UnaryExpression* node,
   check_expr(node->operand.get(), expected);
 }
 
+void TypeCheckVisitor::check_address_of_expr(AddressOfExpression* node,
+                                             std::unique_ptr<Type>& expected) {
+  if (expected->kind() != TypeKind::Pointer) {
+    throw TypeError(
+        node->source_location,
+        "Address of operator '&' returns a pointer where {} was expected",
+        expected->kind());
+  }
+
+  auto type_ptr = cast<PointerType>(expected.get());
+
+  if (!is_place_expr(node->place_expr->kind())) {
+    throw TypeError(
+        node->place_expr->source_location,
+        "Cannot use address of operator '&' on value expression: {}",
+        node->place_expr->kind());
+  }
+
+  auto type_place_expr = infer_expr(node->place_expr.get());
+
+  // will need to be a deep comparison for pointers-to-pointers
+  if (type_place_expr->kind() != type_ptr->base->kind()) {
+    throw TypeError(node->source_location,
+                    "Expected place expression to have type {}. Got {}",
+                    type_ptr->base->kind(), type_place_expr->kind());
+  }
+
+  node->resolved_type = expected->clone();
+}
+
 void TypeCheckVisitor::check_expr(ASTNode* node,
                                   std::unique_ptr<Type>& expected) {
   switch (node->kind()) {
@@ -411,6 +451,9 @@ void TypeCheckVisitor::check_expr(ASTNode* node,
       break;
     case NodeKind::UnaryExpression:
       check_unary_expr(cast<UnaryExpression>(node), expected);
+      break;
+    case NodeKind::AddressOfExpression:
+      check_address_of_expr(cast<AddressOfExpression>(node), expected);
       break;
 
     case NodeKind::CycleStatement:
@@ -541,7 +584,7 @@ auto TypeCheckVisitor::infer_expr_bin_expr(BinaryExpression* node)
                     node->op, left->kind());
   }
 
-  if (rule.return_type == ReturnType::Bool) {
+  if (rule.return_type == BinaryReturnType::Bool) {
     resolved_type = std::make_unique<BoolType>();
 
     // bool must resolve now - no further context above
@@ -584,6 +627,11 @@ auto TypeCheckVisitor::infer_unary_expr(UnaryExpression* node)
   return node->resolved_type->clone();
 }
 
+auto TypeCheckVisitor::infer_address_of_expr(AddressOfExpression* node)
+    -> std::unique_ptr<Type> {
+  throw std::runtime_error("not implemented");
+}
+
 auto TypeCheckVisitor::infer_expr(ASTNode* node) -> std::unique_ptr<Type> {
   switch (node->kind()) {
     case NodeKind::IntLiteralExpression:
@@ -602,6 +650,8 @@ auto TypeCheckVisitor::infer_expr(ASTNode* node) -> std::unique_ptr<Type> {
       return infer_expr_float_literal(cast<FloatLiteralExpression>(node));
     case NodeKind::UnaryExpression:
       return infer_unary_expr(cast<UnaryExpression>(node));
+    case NodeKind::AddressOfExpression:
+      return infer_address_of_expr(cast<AddressOfExpression>(node));
 
     case NodeKind::CycleStatement:
       [[fallthrough]];

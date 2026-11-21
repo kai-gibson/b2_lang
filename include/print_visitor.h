@@ -21,7 +21,8 @@ struct PrettyPrinter {
     ~Closer() { printer.close_node(); }
   };
 
-  auto add_node(std::string_view name) -> Closer {
+  template <class T>
+  auto add_node(T name) -> Closer {
     if (depth) {
       output += std::format("\n{}", std::string(depth * 4, ' '));
     }
@@ -61,6 +62,11 @@ struct PrintVisitor : public Visitor {
     if (resolved_type) {
       auto print_node = printer.add_node(name);
       printer.add_value(resolved_type->kind());
+
+      if (resolved_type->kind() == TypeKind::Pointer) {
+        auto ptr_node = printer.add_node("BaseType");
+        printer.add_value(cast<PointerType>(resolved_type.get())->base->kind());
+      }
     }
   }
 
@@ -192,6 +198,12 @@ struct PrintVisitor : public Visitor {
     printer.add_value(unary_expr.op);
     print_type(unary_expr.resolved_type);
     unary_expr.operand->accept(*this);
+  }
+
+  void visit(AddressOfExpression& addr) override {
+    auto node = printer.add_node(addr.kind());
+    print_type(addr.resolved_type);
+    addr.place_expr->accept(*this);
   }
 };
 

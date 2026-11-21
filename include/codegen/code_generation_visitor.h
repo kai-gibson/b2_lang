@@ -55,6 +55,7 @@ class CodegenVisitor : public Visitor {
   void visit(CycleStatement& cycle) override;
   void visit(PointerTypeExpression& ptr) override;
   void visit(UnaryExpression& unary_expr) override;
+  void visit(AddressOfExpression& addr) override;
 
   auto emit(ASTNode& expr) -> llvm::Value*;
   void compile();

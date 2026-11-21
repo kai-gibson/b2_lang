@@ -35,6 +35,7 @@ enum class NodeKind : uint8_t {
   BreakStatement,
   CycleStatement,
   UnaryExpression,
+  AddressOfExpression,
 };
 
 /*
@@ -264,6 +265,17 @@ struct UnaryExpression : public ASTNode {
 
   UnaryOperation op;
   std::unique_ptr<ASTNode> operand;
+  std::unique_ptr<Type> resolved_type;
+  void accept(Visitor& v) override;
+};
+
+struct AddressOfExpression : public ASTNode {
+  static constexpr NodeKind KIND = NodeKind::AddressOfExpression;
+  AddressOfExpression(SourceLocation source_location,
+                      std::unique_ptr<ASTNode> place_expr)
+      : ASTNode(source_location, KIND), place_expr(std::move(place_expr)) {}
+
+  std::unique_ptr<ASTNode> place_expr;
   std::unique_ptr<Type> resolved_type;
   void accept(Visitor& v) override;
 };

@@ -407,6 +407,5 @@ TEST(ParserTest, ParsesAddressOfExpr) {
   ASSERT_NO_FATAL_FAILURE(cast<IntLiteralExpression>(decl_x->value.get()));
 
   auto decl_ptr = cast<VariableDeclarationStatement>(stmts.at(1).get());
-  auto unary = cast<UnaryExpression>(decl_ptr->value.get());
-  ASSERT_EQ(unary->op, UnaryOperation::AddressOf);
+  ASSERT_NO_FATAL_FAILURE(cast<AddressOfExpression>(decl_ptr->value.get()));
 }
