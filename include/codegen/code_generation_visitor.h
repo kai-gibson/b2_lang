@@ -58,6 +58,8 @@ class CodegenVisitor : public Visitor {
   void visit(AddressOfExpression& addr) override;
   void visit(DereferenceExpression& addr) override;
 
+  auto emit_address(ASTNode* addr) -> llvm::Value*;
+
   auto emit(ASTNode& expr) -> llvm::Value*;
   void compile();
   void output_llvm(const std::string_view filename);

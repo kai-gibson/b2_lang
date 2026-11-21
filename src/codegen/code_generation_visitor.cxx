@@ -72,8 +72,10 @@ auto CodegenVisitor::get_llvm_type(SourceLocation source_location,
       return llvm::Type::getFloatTy(*llvm_context);
     case TypeKind::Float64:
       return llvm::Type::getDoubleTy(*llvm_context);
-    case TypeKind::String:
     case TypeKind::Pointer:
+      return llvm::PointerType::getUnqual(*llvm_context);
+
+    case TypeKind::String:
       throw CodegenError(source_location,
                          "LLVMTYPE Datatype {} not implemented", type->kind());
     case TypeKind::IntLiteral:
@@ -224,9 +226,10 @@ void CodegenVisitor::visit(IntLiteralExpression& expr) {
 
 void CodegenVisitor::visit(VariableExpression& expr) {
   auto* alloca = named_values[expr.name];
-  if (!alloca)
+  if (!alloca) {
     throw CodegenError(expr.source_location, "Unknown variable name: {}",
                        expr.name);
+  }
 
   if (!expr.resolved_type) {
     throw CodegenError(expr.source_location,
@@ -390,5 +393,32 @@ void CodegenVisitor::visit(UnaryExpression& unary_expr) {
   result = emit_unary(*llvm_builder, unary_expr, operand);
 }
 
-void CodegenVisitor::visit(AddressOfExpression& addr) {}
-void CodegenVisitor::visit(DereferenceExpression& addr) {}
+void CodegenVisitor::visit(AddressOfExpression& addr) {
+  result = emit_address(addr.place_expr.get());
+}
+
+void CodegenVisitor::visit(DereferenceExpression& deref) {
+  auto type = get_llvm_type(deref.source_location, deref.resolved_type);
+  result = llvm_builder->CreateLoad(type, emit_address(&deref));
+}
+
+auto CodegenVisitor::emit_address(ASTNode* node) -> llvm::Value* {
+  switch (node->kind()) {
+    case NodeKind::DereferenceExpression: {
+      auto expr = cast<DereferenceExpression>(node);
+      return emit(*expr->pointer);
+    }
+    case NodeKind::VariableExpression: {
+      auto expr = cast<VariableExpression>(node);
+      auto* alloca = named_values[expr->name];
+      if (!alloca) {
+        throw CodegenError(expr->source_location, "Unknown variable name: {}",
+                           expr->name);
+      }
+      return alloca;
+    }
+    default:
+      throw CodegenError(node->source_location,
+                         "Expression is not an addressable space");
+  }
+}

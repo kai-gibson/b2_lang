@@ -229,7 +229,7 @@ TEST(CodegenTest, GeneratesPointerReturn) {
       x = 10
       ptr = &x
 
-      return x.*
+      return ptr.*
     end
   )";
 
