@@ -194,3 +194,31 @@ TEST(CodegenTest, GeneratesNestedLoop) {
   RUN(output, program);
   ASSERT_EQ(output, 9);
 }
+
+TEST(CodegenTest, GeneratesNegativeReturn) {
+  auto program = R"(
+    func main() 
+      return -100
+    end
+  )";
+
+  RUN(output, program);
+  ASSERT_EQ(output, -100);
+}
+
+TEST(CodegenTest, GeneratesNotExpr) {
+  auto program = R"(
+    func main() 
+      if not (1 == 2)
+        return 10
+      else
+        return 20
+      end
+
+      return 1
+    end
+  )";
+
+  RUN(output, program);
+  ASSERT_EQ(output, 10);
+}

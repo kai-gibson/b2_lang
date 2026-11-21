@@ -318,6 +318,7 @@ void CodegenVisitor::visit(IfStatement& if_stmt) {
     }
 
     llvm_builder->SetInsertPoint(if_end);
+
     result = if_then_val;
   } else {
     auto* if_then =

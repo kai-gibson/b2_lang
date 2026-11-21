@@ -1,7 +1,4 @@
-func ret_one()
-  return 1
-end
-
 func main()
-  return ret_one()
+  x = 0 != 3
+  return 0
 end

@@ -37,9 +37,8 @@ bool contains(const std::vector<TokenType>& terminators, TokenType token) {
 
 auto Parser::consume(TokenType expected) -> const Token& {
   if (peek().type != expected) {
-    throw ParseError(peek().source_location, "Expected: {}, got: {}",
-                     token_type_to_str(expected),
-                     token_type_to_str(peek().type));
+    throw ParseError(peek().source_location, "Expected: {}, got: {}", expected,
+                     peek().type);
   }
 
   auto& token = peek();
@@ -103,8 +102,7 @@ auto Parser::parse_primary_expression() -> std::unique_ptr<ASTNode> {
       return parse_identifier_expression();
     default:
       throw ParseError(peek().source_location,
-                       "Unexpected primary expression: {}",
-                       token_type_to_str(peek().type));
+                       "Unexpected primary expression: {}", peek().type);
   }
 }
 
@@ -122,11 +120,11 @@ auto Parser::parse_prefix_expression() -> std::unique_ptr<ASTNode> {
   switch (peek().type) {
     case TokenType::Minus:
     case TokenType::Not:
+    case TokenType::Ampersand:
       return parse_unary_expression();
     default:
       throw ParseError(peek().source_location,
-                       "Unexpected prefix expression: {}",
-                       token_type_to_str(peek().type));
+                       "Unexpected prefix expression: {}", peek().type);
   }
 }
 
@@ -145,7 +143,7 @@ auto Parser::parse_expression(int32_t min_precedence)
     auto binop = token_to_binary_op(op.type);
     if (!binop) {
       throw ParseError(op.source_location, "Unknown binary operator: {}",
-                       token_type_to_str(op.type));
+                       op.type);
     }
 
     advance();
@@ -243,7 +241,7 @@ auto Parser::parse_statement() -> std::unique_ptr<ASTNode> {
       return parse_cycle_statement();
     default:
       throw ParseError(peek().source_location, "Unexpected statement: {}",
-                       token_type_to_str(peek().type));
+                       peek().type);
   }
 };
 

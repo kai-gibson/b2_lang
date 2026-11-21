@@ -26,6 +26,8 @@ auto is_symbol_char(char chr) -> bool {
     case '!':
     case '[':
     case ']':
+    case '.':
+    case '&':
       return true;
     default:
       return false;

@@ -105,5 +105,7 @@ auto unary_op_rule(UnaryOperation op) -> OperationRule {
               .type_flags = {TypeFlag::Integer, TypeFlag::Float}};
     case UnaryOperation::Not:
       return {.return_type = ReturnType::Same, .type_flags = {TypeFlag::Bool}};
+    case UnaryOperation::AddressOf:
+      throw std::runtime_error("in progress");
   }
 }

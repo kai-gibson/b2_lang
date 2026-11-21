@@ -368,7 +368,7 @@ TEST(ParserTest, ParsesPointerTypeDecl) {
   ASSERT_EQ(type_id->name, "Int32");
 }
 
-TEST(ParserTest, ParsersUnaryExpression) {
+TEST(ParserTest, ParsersNotExpression) {
   PARSE_EXPR(node, "x = not (1 == 1)");
 
   auto assign = cast<VariableDeclarationStatement>(node.get());
@@ -377,4 +377,36 @@ TEST(ParserTest, ParsersUnaryExpression) {
 
   ASSERT_NO_FATAL_FAILURE(cast<IntLiteralExpression>(bin_expr->lhs.get()));
   ASSERT_NO_FATAL_FAILURE(cast<IntLiteralExpression>(bin_expr->rhs.get()));
+}
+
+TEST(ParserTest, ParsersNegativeExpression) {
+  PARSE_EXPR(node, "x = -1");
+
+  auto assign = cast<VariableDeclarationStatement>(node.get());
+  auto negative = cast<UnaryExpression>(assign->value.get());
+  ASSERT_NO_FATAL_FAILURE(cast<IntLiteralExpression>(negative->operand.get()));
+}
+
+TEST(ParserTest, ParsersNegativeExpressionFloat) {
+  PARSE_EXPR(node, "x = -1.0");
+
+  auto assign = cast<VariableDeclarationStatement>(node.get());
+  auto negative = cast<UnaryExpression>(assign->value.get());
+  ASSERT_NO_FATAL_FAILURE(
+      cast<FloatLiteralExpression>(negative->operand.get()));
+}
+
+TEST(ParserTest, ParsesAddressOfExpr) {
+  PARSE_STMTS(stmts, R"(
+    x = 10
+    ptr = &x
+  )");
+
+  ASSERT_EQ(stmts.size(), 2);
+  auto decl_x = cast<VariableDeclarationStatement>(stmts.at(0).get());
+  ASSERT_NO_FATAL_FAILURE(cast<IntLiteralExpression>(decl_x->value.get()));
+
+  auto decl_ptr = cast<VariableDeclarationStatement>(stmts.at(1).get());
+  auto unary = cast<UnaryExpression>(decl_ptr->value.get());
+  ASSERT_EQ(unary->op, UnaryOperation::AddressOf);
 }

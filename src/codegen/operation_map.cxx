@@ -108,6 +108,7 @@ auto emit_int_unary(llvm::IRBuilder<>& builder, UnaryExpression& expr,
                     llvm::Value* operand) -> llvm::Value* {
   switch (expr.op) {
     case UnaryOperation::Negative:
+    case UnaryOperation::AddressOf:
       return builder.CreateNeg(operand, "negtmp");
     case UnaryOperation::Not:
       throw CodegenError(expr.source_location,
@@ -120,6 +121,7 @@ auto emit_float_unary(llvm::IRBuilder<>& builder, UnaryExpression& expr,
                       llvm::Value* operand) -> llvm::Value* {
   switch (expr.op) {
     case UnaryOperation::Negative:
+    case UnaryOperation::AddressOf:
       return builder.CreateFNeg(operand, "negtmp");
     case UnaryOperation::Not:
       throw CodegenError(expr.source_location,
@@ -132,6 +134,7 @@ auto emit_bool_unary(llvm::IRBuilder<>& builder, UnaryExpression& expr,
                      llvm::Value* operand) -> llvm::Value* {
   switch (expr.op) {
     case UnaryOperation::Negative:
+    case UnaryOperation::AddressOf:
       throw CodegenError(expr.source_location,
                          "Type {} does not support binary operation {}",
                          expr.resolved_type->kind(), expr.op);

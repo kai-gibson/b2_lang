@@ -4,12 +4,13 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <magic_enum/magic_enum.hpp>
 #include <ostream>
 
 #include "compile_error.h"
 
 inline void PrintTo(const TokenType& type, std::ostream* os) {
-  *os << token_type_to_str(type);
+  *os << magic_enum::enum_name(type);
 }
 
 TEST(IsIdentifierCharTest, WorksForAllIdentifiersTest) {
@@ -58,7 +59,7 @@ struct LexerData {
 
   friend void PrintTo(const LexerData& lexer_data, std::ostream* os) {
     *os << std::format("(\"{}\", {})", lexer_data.input,
-                       token_type_to_str(lexer_data.expected.at(0)));
+                       lexer_data.expected.at(0));
   }
 };
 
@@ -113,6 +114,9 @@ INSTANTIATE_TEST_SUITE_P(
         LexerData{"Or", "or", {TokenType::Or, TokenType::EndOfFile}},
         LexerData{"If", "if", {TokenType::If, TokenType::EndOfFile}},
         LexerData{"Else", "else", {TokenType::Else, TokenType::EndOfFile}},
+        LexerData{"DotStar", ".*", {TokenType::DotStar, TokenType::EndOfFile}},
+        LexerData{
+            "Ampersand", "&", {TokenType::Ampersand, TokenType::EndOfFile}},
         LexerData{"Not", "not", {TokenType::Not, TokenType::EndOfFile}}),
     ([](const testing::TestParamInfo<LexerData>& info) -> std::string {
       return info.param.name;
@@ -122,8 +126,8 @@ TEST_P(LexerParamTest, ProducesExpectedTokenTypes) {
   auto tokens = lex_string(GetParam().input);
 
   ASSERT_EQ(tokens.size(), GetParam().expected.size())
-      << "size incorrect [" << token_type_to_str(tokens[0].type) << ","
-      << token_type_to_str(tokens[1].type) << "]";
+      << "size incorrect [" << magic_enum::enum_name(tokens[0].type) << ","
+      << magic_enum::enum_name(tokens[1].type) << "]";
 
   for (size_t i = 0; i < tokens.size(); i++) {
     EXPECT_EQ(tokens[i].type, GetParam().expected[i]);
