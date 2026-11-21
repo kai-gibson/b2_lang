@@ -222,3 +222,17 @@ TEST(CodegenTest, GeneratesNotExpr) {
   RUN(output, program);
   ASSERT_EQ(output, 10);
 }
+
+TEST(CodegenTest, GeneratesPointerReturn) {
+  auto program = R"(
+    func main() 
+      x = 10
+      ptr = &x
+
+      return x.*
+    end
+  )";
+
+  RUN(output, program);
+  ASSERT_EQ(output, 10);
+}
