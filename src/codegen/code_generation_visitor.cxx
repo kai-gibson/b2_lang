@@ -391,3 +391,4 @@ void CodegenVisitor::visit(UnaryExpression& unary_expr) {
 }
 
 void CodegenVisitor::visit(AddressOfExpression& addr) {}
+void CodegenVisitor::visit(DereferenceExpression& addr) {}

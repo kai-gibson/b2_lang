@@ -205,6 +205,12 @@ struct PrintVisitor : public Visitor {
     print_type(addr.resolved_type);
     addr.place_expr->accept(*this);
   }
+
+  void visit(DereferenceExpression& addr) override {
+    auto node = printer.add_node(addr.kind());
+    print_type(addr.resolved_type);
+    addr.pointer->accept(*this);
+  }
 };
 
 #endif  // PRINT_VISITOR_H

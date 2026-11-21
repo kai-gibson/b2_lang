@@ -56,6 +56,7 @@ class CodegenVisitor : public Visitor {
   void visit(PointerTypeExpression& ptr) override;
   void visit(UnaryExpression& unary_expr) override;
   void visit(AddressOfExpression& addr) override;
+  void visit(DereferenceExpression& addr) override;
 
   auto emit(ASTNode& expr) -> llvm::Value*;
   void compile();

@@ -280,6 +280,17 @@ struct AddressOfExpression : public ASTNode {
   void accept(Visitor& v) override;
 };
 
+struct DereferenceExpression : public ASTNode {
+  static constexpr NodeKind KIND = NodeKind::AddressOfExpression;
+  DereferenceExpression(SourceLocation source_location,
+                        std::unique_ptr<ASTNode> pointer)
+      : ASTNode(source_location, KIND), pointer(std::move(pointer)) {}
+
+  std::unique_ptr<ASTNode> pointer;
+  std::unique_ptr<Type> resolved_type;
+  void accept(Visitor& v) override;
+};
+
 template <class T>
 auto cast(ASTNode* node) -> T* {
   assert(node->kind() == T::KIND);

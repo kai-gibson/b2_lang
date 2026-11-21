@@ -22,3 +22,4 @@ inline void CycleStatement::accept(Visitor& v) { v.visit(*this); }
 inline void PointerTypeExpression::accept(Visitor& v) { v.visit(*this); }
 inline void UnaryExpression::accept(Visitor& v) { v.visit(*this); }
 inline void AddressOfExpression::accept(Visitor& v) { v.visit(*this); }
+inline void DereferenceExpression::accept(Visitor& v) { v.visit(*this); }

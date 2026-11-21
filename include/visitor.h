@@ -24,6 +24,7 @@ struct Visitor {
   virtual void visit(PointerTypeExpression& expr) = 0;
   virtual void visit(UnaryExpression& expr) = 0;
   virtual void visit(AddressOfExpression& expr) = 0;
+  virtual void visit(DereferenceExpression& expr) = 0;
 };
 
 #endif  // VISITOR_H

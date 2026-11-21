@@ -409,3 +409,22 @@ TEST(ParserTest, ParsesAddressOfExpr) {
   auto decl_ptr = cast<VariableDeclarationStatement>(stmts.at(1).get());
   ASSERT_NO_FATAL_FAILURE(cast<AddressOfExpression>(decl_ptr->value.get()));
 }
+
+TEST(ParserTest, ParsesDereferenceExpr) {
+  PARSE_STMTS(stmts, R"(
+    x = 10
+    ptr = &x
+    show ptr.*
+  )");
+
+  ASSERT_EQ(stmts.size(), 3);
+  auto decl_x = cast<VariableDeclarationStatement>(stmts.at(0).get());
+  ASSERT_NO_FATAL_FAILURE(cast<IntLiteralExpression>(decl_x->value.get()));
+
+  auto decl_ptr = cast<VariableDeclarationStatement>(stmts.at(1).get());
+  ASSERT_NO_FATAL_FAILURE(cast<AddressOfExpression>(decl_ptr->value.get()));
+
+  auto show_stmt = cast<ShowStatement>(stmts.at(2).get());
+  auto deref = cast<DereferenceExpression>(show_stmt->expr.get());
+  ASSERT_NO_FATAL_FAILURE(cast<VariableExpression>(deref->pointer.get()));
+}

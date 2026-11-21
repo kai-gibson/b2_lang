@@ -129,6 +129,20 @@ auto Parser::parse_prefix_expression() -> std::unique_ptr<ASTNode> {
   }
 }
 
+auto Parser::parse_postfix_expression(std::unique_ptr<ASTNode> lhs)
+    -> std::unique_ptr<ASTNode> {
+  auto token = peek();
+  switch (token.type) {
+    case TokenType::DotStar:
+      advance();
+      return std::make_unique<DereferenceExpression>(token.source_location,
+                                                     std::move(lhs));
+    default:
+      throw ParseError(peek().source_location,
+                       "Unexpected postfix expression: {}", peek().type);
+  }
+}
+
 auto Parser::parse_expression(int32_t min_precedence)
     -> std::unique_ptr<ASTNode> {
   std::unique_ptr<ASTNode> lhs;
@@ -139,8 +153,20 @@ auto Parser::parse_expression(int32_t min_precedence)
     lhs = parse_primary_expression();
   }
 
-  while (precedence(peek().type) > min_precedence) {
+  while (true) {
     auto op = peek();
+
+    if (POSTFIX_TOKENS.contains(op.type)) {
+      if (POSTFIX_PRECEDENCE <= min_precedence) {
+        break;
+      }
+
+      lhs = parse_postfix_expression(std::move(lhs));
+      continue;
+    }
+
+    if (precedence(peek().type) <= min_precedence) break;
+
     auto binop = token_to_binary_op(op.type);
     if (!binop) {
       throw ParseError(op.source_location, "Unknown binary operator: {}",
