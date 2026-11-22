@@ -36,24 +36,6 @@ enum class TypeFlag : uint8_t {
   String,
 };
 
-constexpr auto TYPE_KIND_STR = to_static_map<TypeKind, std::string_view>({
-    {TypeKind::Int8, "Int8"},
-    {TypeKind::Int16, "Int16"},
-    {TypeKind::Int32, "Int32"},
-    {TypeKind::Int64, "Int64"},
-    {TypeKind::UInt8, "UInt8"},
-    {TypeKind::UInt16, "UInt16"},
-    {TypeKind::UInt32, "UInt32"},
-    {TypeKind::UInt64, "UInt64"},
-    {TypeKind::Float32, "Float32"},
-    {TypeKind::Float64, "Float64"},
-    {TypeKind::IntLiteral, "IntLiteral"},
-    {TypeKind::FloatLiteral, "FloatLiteral"},
-    {TypeKind::String, "String"},
-    {TypeKind::Bool, "Bool"},
-    {TypeKind::Pointer, "Pointer"},
-});
-
 constexpr auto PRIMITIVE_TYPES = to_static_map<std::string_view, TypeKind>({
     {"Bool", TypeKind::Bool},
     {"Int8", TypeKind::Int8},
@@ -87,11 +69,6 @@ constexpr auto ALL_TYPES = to_static_map<std::string_view, TypeKind>({
     {"Pointer", TypeKind::Pointer},
 });
 
-constexpr auto type_kind_to_str(TypeKind t) -> const std::string_view {
-  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-  return TYPE_KIND_STR.find(t)->get();
-}
-
 class Type {
  public:
   Type(TypeKind kind) : kind_(kind) {}
@@ -99,7 +76,6 @@ class Type {
   virtual ~Type() = default;
 
   auto kind() -> TypeKind { return this->kind_; };
-  auto kind_name() -> std::string_view { return type_kind_to_str(kind_); };
   auto flags() -> bitset<TypeFlag>;
 
   virtual auto clone() -> std::unique_ptr<Type> = 0;

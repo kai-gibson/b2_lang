@@ -3,8 +3,10 @@
 #include <boost/multiprecision/cpp_int.hpp>
 using namespace boost::multiprecision::literals;
 namespace mp = boost::multiprecision;
-
 #include <gmock/gmock.h>
+
+#include <magic_enum/magic_enum.hpp>
+using magic_enum::enum_name;
 
 #include "ast.h"
 #include "compile_error.h"
@@ -106,7 +108,7 @@ INSTANTIATE_TEST_SUITE_P(
         ExplicitTypeRecord{.code = "x:Float64 = 12.123",
                            .expected = TypeKind::Float64}),
     ([](const testing::TestParamInfo<ExplicitTypeRecord>& info) -> std::string {
-      return std::string(type_kind_to_str(info.param.expected));
+      return std::string(enum_name(info.param.expected));
     }));
 
 TEST_P(CheckExplicitTypeTest, ChecksExplicitType) {
@@ -251,14 +253,13 @@ INSTANTIATE_TEST_SUITE_P(
                  .success = false}),
 
     ([](const testing::TestParamInfo<IntRange>& info) -> std::string {
-      return std::string(type_kind_to_str(info.param.int_type)) + "_" +
+      return std::string(enum_name(info.param.int_type)) + "_" +
              info.param.value;
     }));
 
 TEST_P(CheckIntFitsTest, CheckSizedIntFits) {
   auto param = GetParam();
-  auto stmt_code =
-      std::format("x: {} = {}", type_kind_to_str(param.int_type), param.value);
+  auto stmt_code = std::format("x: {} = {}", param.int_type, param.value);
   using ::testing::HasSubstr;
   using ::testing::Not;
 
