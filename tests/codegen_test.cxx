@@ -236,3 +236,34 @@ TEST(CodegenTest, GeneratesPointerReturn) {
   RUN(output, program);
   ASSERT_EQ(output, 10);
 }
+
+TEST(CodegenTest, GeneratesPointerUpdate) {
+  auto program = R"(
+    func main() 
+      x = 10
+      ptr = &x
+
+      set x = 20
+
+      return ptr.*
+    end
+  )";
+
+  RUN(output, program);
+  ASSERT_EQ(output, 20);
+}
+
+TEST(CodegenTest, GeneratesPointerWrite) {
+  auto program = R"(
+    func main() 
+      x = 10
+      ptr = &x
+
+      set ptr.* = 20
+      return x
+    end
+  )";
+
+  RUN(output, program);
+  ASSERT_EQ(output, 20);
+}

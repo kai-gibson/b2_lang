@@ -18,7 +18,13 @@ constexpr auto is_builtin_type(std::string_view target) -> bool {
       [target](std::string_view item) -> bool { return item == target; });
 }
 
-auto precedence(TokenType t) -> int32_t;
+struct BindingPower {
+  int32_t left;
+  int32_t right;
+};
+auto binary_binding_power(TokenType t) -> BindingPower;
+auto prefix_binding_power(TokenType t) -> BindingPower;
+auto postfix_binding_power(TokenType t) -> BindingPower;
 
 const std::vector<TokenType> IF_TERMINATORS = {TokenType::ElseIf,
                                                TokenType::Else, TokenType::End};
@@ -43,7 +49,7 @@ class Parser {
                                int32_t min_precedence)
       -> std::unique_ptr<ASTNode>;
 
-  auto parse_expression(int32_t min_precedence) -> std::unique_ptr<ASTNode>;
+  auto parse_expression(int32_t binding_power_min) -> std::unique_ptr<ASTNode>;
   auto parse_statement() -> std::unique_ptr<ASTNode>;
   auto parse_variable_declaration() -> std::unique_ptr<ASTNode>;
   auto parse_variable_assignment() -> std::unique_ptr<ASTNode>;
@@ -62,11 +68,14 @@ class Parser {
   auto parse_loop() -> std::unique_ptr<ASTNode>;
   auto parse_break_statement() -> std::unique_ptr<ASTNode>;
   auto parse_cycle_statement() -> std::unique_ptr<ASTNode>;
-  auto parse_prefix_expression() -> std::unique_ptr<ASTNode>;
-  auto parse_postfix_expression(std::unique_ptr<ASTNode> lhs)
+  auto parse_prefix_expression(int32_t binding_power_min)
       -> std::unique_ptr<ASTNode>;
-  auto parse_unary_expression() -> std::unique_ptr<ASTNode>;
-  auto parse_address_of_expression() -> std::unique_ptr<ASTNode>;
+  auto make_postfix_expression(std::unique_ptr<ASTNode> lhs)
+      -> std::unique_ptr<ASTNode>;
+  auto parse_unary_expression(int32_t binding_power_min)
+      -> std::unique_ptr<ASTNode>;
+  auto parse_address_of_expression(int32_t binding_power_min)
+      -> std::unique_ptr<ASTNode>;
 
   // vars
   const Tokens& tokens;

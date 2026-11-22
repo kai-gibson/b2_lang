@@ -2,28 +2,56 @@
 
 #include "compile_error.h"
 
-constexpr int PREFIX_PRECEDENCE = 5;
-constexpr int POSTFIX_PRECEDENCE = 6;
-
 // higher number == binds tighter
-auto precedence(TokenType t) -> int32_t {
+auto binary_binding_power(TokenType t) -> BindingPower {
   switch (t) {
+    case TokenType::Or:
+      return {.left = 1, .right = 2};
+
+    case TokenType::And:
+      return {.left = 3, .right = 4};
+
     case TokenType::Equals:
     case TokenType::NotEquals:
-      return 1;
+      return {.left = 5, .right = 6};
+
     case TokenType::GreaterThan:
     case TokenType::LessThan:
     case TokenType::GreaterThanEquals:
     case TokenType::LessThanEquals:
-      return 2;
+      return {.left = 7, .right = 8};
+
     case TokenType::Plus:
     case TokenType::Minus:
-      return 3;
+      return {.left = 9, .right = 10};
+
     case TokenType::Asterisk:
     case TokenType::ForwardSlash:
-      return 4;
+      return {.left = 11, .right = 12};
+
     default:
-      return 0;
+      return {.left = 0, .right = 0};
+  }
+}
+
+auto prefix_binding_power(TokenType t) -> BindingPower {
+  switch (t) {
+    case TokenType::Minus:
+    case TokenType::Not:
+      return {.left = 0, .right = 13};
+
+    default:
+      return {.left = 0, .right = 0};
+  }
+}
+
+auto postfix_binding_power(TokenType t) -> BindingPower {
+  switch (t) {
+    case TokenType::DotStar:
+      return {.left = 14, .right = 0};
+
+    default:
+      return {.left = 0, .right = 0};
   }
 }
 
@@ -116,20 +144,21 @@ auto Parser::parse_int_expression() -> std::unique_ptr<ASTNode> {
   return std::move(result);
 }
 
-auto Parser::parse_prefix_expression() -> std::unique_ptr<ASTNode> {
+auto Parser::parse_prefix_expression(int32_t binding_power_min)
+    -> std::unique_ptr<ASTNode> {
   switch (peek().type) {
     case TokenType::Minus:
     case TokenType::Not:
-      return parse_unary_expression();
+      return parse_unary_expression(binding_power_min);
     case TokenType::Ampersand:
-      return parse_address_of_expression();
+      return parse_address_of_expression(binding_power_min);
     default:
       throw ParseError(peek().source_location,
                        "Unexpected prefix expression: {}", peek().type);
   }
 }
 
-auto Parser::parse_postfix_expression(std::unique_ptr<ASTNode> lhs)
+auto Parser::make_postfix_expression(std::unique_ptr<ASTNode> lhs)
     -> std::unique_ptr<ASTNode> {
   auto token = peek();
   switch (token.type) {
@@ -143,12 +172,13 @@ auto Parser::parse_postfix_expression(std::unique_ptr<ASTNode> lhs)
   }
 }
 
-auto Parser::parse_expression(int32_t min_precedence)
+auto Parser::parse_expression(int32_t binding_power_min)
     -> std::unique_ptr<ASTNode> {
   std::unique_ptr<ASTNode> lhs;
 
   if (PREFIX_TOKENS.contains(peek().type)) {
-    lhs = parse_prefix_expression();
+    auto [_, right] = prefix_binding_power(peek().type);
+    lhs = parse_prefix_expression(right);
   } else {
     lhs = parse_primary_expression();
   }
@@ -157,15 +187,15 @@ auto Parser::parse_expression(int32_t min_precedence)
     auto op = peek();
 
     if (POSTFIX_TOKENS.contains(op.type)) {
-      if (POSTFIX_PRECEDENCE <= min_precedence) {
-        break;
-      }
+      auto [left, _] = postfix_binding_power(op.type);
+      if (left <= binding_power_min) break;
 
-      lhs = parse_postfix_expression(std::move(lhs));
+      lhs = make_postfix_expression(std::move(lhs));
       continue;
     }
 
-    if (precedence(peek().type) <= min_precedence) break;
+    auto [left, right] = binary_binding_power(op.type);
+    if (left <= binding_power_min) break;
 
     auto binop = token_to_binary_op(op.type);
     if (!binop) {
@@ -174,7 +204,7 @@ auto Parser::parse_expression(int32_t min_precedence)
     }
 
     advance();
-    auto rhs = parse_expression(precedence(op.type));
+    auto rhs = parse_expression(right);
     lhs = std::make_unique<BinaryExpression>(
         *binop, std::move(lhs), std::move(rhs), op.source_location);
   }
@@ -363,7 +393,8 @@ auto Parser::parse_cycle_statement() -> std::unique_ptr<ASTNode> {
   return std::make_unique<CycleStatement>(loc);
 }
 
-auto Parser::parse_unary_expression() -> std::unique_ptr<ASTNode> {
+auto Parser::parse_unary_expression(int32_t binding_power_min)
+    -> std::unique_ptr<ASTNode> {
   auto token = peek();
   advance();
 
@@ -374,13 +405,14 @@ auto Parser::parse_unary_expression() -> std::unique_ptr<ASTNode> {
   }
 
   return std::make_unique<UnaryExpression>(token.source_location, *op,
-                                           parse_expression(PREFIX_PRECEDENCE));
+                                           parse_expression(binding_power_min));
 }
 
-auto Parser::parse_address_of_expression() -> std::unique_ptr<ASTNode> {
+auto Parser::parse_address_of_expression(int32_t binding_power_min)
+    -> std::unique_ptr<ASTNode> {
   auto token = peek();
   advance();
 
   return std::make_unique<AddressOfExpression>(
-      token.source_location, parse_expression(PREFIX_PRECEDENCE));
+      token.source_location, parse_expression(binding_power_min));
 }
