@@ -518,3 +518,19 @@ TEST(TypeCheckTest, ChecksInt32FromDeref) {
 
   ASSERT_EQ(deref->resolved_type->kind(), TypeKind::Int32);
 }
+
+TEST(TypeCheckTest, ThrowsOnValueExprInAssignment) {
+  using ::testing::HasSubstr;
+  using ::testing::Not;
+
+  try {
+    CHECK_STMTS(stmts, R"(
+      set 1 = 2
+    )");
+    ASSERT_TRUE(false);
+  } catch (TypeError& e) {
+    ASSERT_THAT(
+        e.what(),
+        HasSubstr("Cannot assign to value expression: IntLiteralExpression"));
+  }
+}

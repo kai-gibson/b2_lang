@@ -171,6 +171,6 @@ class TypeCheckVisitor {
   uint32_t loop_depth;
 };
 
-auto verify_place_expr(ASTNode* place_expr) -> void;
+auto verify_place_expr(ASTNode* place_expr, std::string_view message) -> void;
 
 #endif  // TYPE_CHECK_VISITOR_H

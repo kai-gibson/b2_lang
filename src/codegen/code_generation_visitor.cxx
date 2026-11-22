@@ -135,16 +135,10 @@ void CodegenVisitor::visit(VariableDeclarationStatement& stmt) {
 }
 
 void CodegenVisitor::visit(VariableAssignmentStatement& stmt) {
-  auto* variable = named_values[stmt.name];
-  if (!variable) {
-    throw CodegenError(stmt.source_location,
-                       "Cannot assign to non-existent variable: {}", stmt.name);
-  }
+  auto place_expr = emit_address(stmt.place_expr.get());
+  auto value_expr = emit(*stmt.value_expr);
 
-  auto r = emit(*stmt.value);
-
-  llvm_builder->CreateStore(r, variable);
-  result = r;
+  result = llvm_builder->CreateStore(value_expr, place_expr);
   return;
 }
 

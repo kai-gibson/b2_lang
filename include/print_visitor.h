@@ -112,8 +112,8 @@ struct PrintVisitor : public Visitor {
 
   void visit(VariableAssignmentStatement& stmt) override {
     auto print_node = printer.add_node("VarAssign");
-    printer.add_string_value(stmt.name);
-    stmt.value->accept(*this);
+    stmt.place_expr->accept(*this);
+    stmt.value_expr->accept(*this);
   }
 
   void visit(ShowStatement& stmt) override {

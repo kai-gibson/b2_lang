@@ -75,11 +75,12 @@ TEST(ParserTest, ParsesSetStatement) {
   ASSERT_NO_FATAL_FAILURE(parse_statements("x = 10\nset x = 12", stmts));
   ASSERT_EQ(stmts.size(), 2);
 
-  auto show = cast<VariableAssignmentStatement>(stmts.at(1).get());
-  auto value = cast<IntLiteralExpression>(show->value.get());
+  auto assign = cast<VariableAssignmentStatement>(stmts.at(1).get());
+  auto place_expr = cast<VariableExpression>(assign->place_expr.get());
+  auto value_expr = cast<IntLiteralExpression>(assign->value_expr.get());
 
-  ASSERT_EQ(show->name, "x");
-  EXPECT_EQ(value->value, 12);
+  ASSERT_EQ(place_expr->name, "x");
+  EXPECT_EQ(value_expr->value, 12);
 }
 
 TEST(ParserTest, ParsesMultiplication) {
@@ -126,10 +127,12 @@ TEST(ParserTest, ParsesVariableIncrement) {
   ASSERT_EQ(value, 12);
 
   auto assign = cast<VariableAssignmentStatement>(stmts.at(1).get());
-  auto add = cast<BinaryExpression>(assign->value.get());
+  auto place_expr = cast<VariableExpression>(assign->place_expr.get());
+  auto add_value_expr = cast<BinaryExpression>(assign->value_expr.get());
+  ASSERT_EQ(place_expr->name, "x");
 
-  auto left = cast<VariableExpression>(add->lhs.get());
-  auto right = cast<IntLiteralExpression>(add->rhs.get());
+  auto left = cast<VariableExpression>(add_value_expr->lhs.get());
+  auto right = cast<IntLiteralExpression>(add_value_expr->rhs.get());
 
   ASSERT_EQ(left->name, "x");
   ASSERT_EQ(right->value, 2);
@@ -324,7 +327,14 @@ TEST(ParserTest, ParsesLoopStatement) {
 
   auto assign =
       cast<VariableAssignmentStatement>(block->statements.at(0).get());
-  ASSERT_EQ(assign->name, "x");
+  auto place_expr = cast<VariableExpression>(assign->place_expr.get());
+  auto add_value_expr = cast<BinaryExpression>(assign->value_expr.get());
+  auto left = cast<VariableExpression>(add_value_expr->lhs.get());
+  auto right = cast<IntLiteralExpression>(add_value_expr->rhs.get());
+
+  ASSERT_EQ(place_expr->name, "x");
+  ASSERT_EQ(left->name, "x");
+  ASSERT_EQ(right->value, 1);
 
   ASSERT_NO_FATAL_FAILURE(cast<IfStatement>(block->statements.at(1).get()));
 }

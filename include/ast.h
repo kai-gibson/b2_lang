@@ -109,14 +109,15 @@ struct VariableExpression : public ASTNode {
 struct VariableAssignmentStatement : public ASTNode {
   static constexpr NodeKind KIND = NodeKind::VariableAssignmentStatement;
 
-  VariableAssignmentStatement(std::string name, std::unique_ptr<ASTNode> value,
+  VariableAssignmentStatement(std::unique_ptr<ASTNode> place_expr,
+                              std::unique_ptr<ASTNode> value_expr,
                               SourceLocation source_location)
       : ASTNode(source_location, NodeKind::VariableAssignmentStatement),
-        name(std::move(name)),
-        value(std::move(value)) {}
+        place_expr(std::move(place_expr)),
+        value_expr(std::move(value_expr)) {}
 
-  std::string name;
-  std::unique_ptr<ASTNode> value;
+  std::unique_ptr<ASTNode> place_expr;
+  std::unique_ptr<ASTNode> value_expr;
   std::unique_ptr<Type> assignment_type;
   void accept(Visitor& v) override;
 };

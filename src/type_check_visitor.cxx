@@ -103,15 +103,14 @@ auto get_literal_default(std::unique_ptr<Type>& type, SourceLocation loc)
   }
 }
 
-auto verify_place_expr(ASTNode* node) -> void {
+auto verify_place_expr(ASTNode* node, std::string_view message) -> void {
   switch (node->kind()) {
     case NodeKind::VariableExpression:
+    case NodeKind::DereferenceExpression:
       return;
     default:
-      throw TypeError(
-          node->source_location,
-          "Cannot use address of operator '&' on value expression: {}",
-          node->kind());
+      throw TypeError(node->source_location, "{} value expression: {}", message,
+                      node->kind());
   }
 }
 
@@ -193,16 +192,10 @@ void TypeCheckVisitor::visit_statement_block_stmt(BlockStatement* block) {
 
 void TypeCheckVisitor::visit_statement_var_assign(
     VariableAssignmentStatement* var) {
-  auto found = this->variable_scope_stack.find(var->name);
+  verify_place_expr(var->place_expr.get(), "Cannot assign to");
+  auto type_place_expr = infer_expr(var->place_expr.get());
 
-  if (found == nullptr) {
-    throw TypeError(var->source_location, "Usage of undefined variable \"{}\"",
-                    var->name);
-  }
-
-  auto& var_type = *found;
-
-  check_expr(var->value.get(), var_type);
+  check_expr(var->value_expr.get(), type_place_expr);
 }
 
 void TypeCheckVisitor::visit_statement_program(Program* prog) {
@@ -410,7 +403,8 @@ void TypeCheckVisitor::check_address_of_expr(AddressOfExpression* node,
 
   auto type_ptr = cast<PointerType>(expected.get());
 
-  verify_place_expr(node->place_expr.get());
+  verify_place_expr(node->place_expr.get(),
+                    "Cannot use address of operator '&' on");
 
   auto type_place_expr = infer_expr(node->place_expr.get());
 
@@ -653,7 +647,8 @@ auto TypeCheckVisitor::infer_unary_expr(UnaryExpression* node)
 
 auto TypeCheckVisitor::infer_address_of_expr(AddressOfExpression* node)
     -> std::unique_ptr<Type> {
-  verify_place_expr(node->place_expr.get());
+  verify_place_expr(node->place_expr.get(),
+                    "Cannot use address of operator '&' on");
 
   auto type = std::make_unique<PointerType>();
   type->base = infer_expr(node->place_expr.get());

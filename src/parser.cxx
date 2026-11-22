@@ -264,11 +264,13 @@ auto Parser::parse_variable_declaration() -> std::unique_ptr<ASTNode> {
 
 auto Parser::parse_variable_assignment() -> std::unique_ptr<ASTNode> {
   auto set = consume(TokenType::Set);
-  auto [_, name, _a] = consume(TokenType::Identifier);
+  auto place_expr = parse_expression(0);
+
   consume(TokenType::Assignment);
 
+  auto value_expr = parse_expression(0);
   return std::make_unique<VariableAssignmentStatement>(
-      name, parse_expression(0), set.source_location);
+      std::move(place_expr), std::move(value_expr), set.source_location);
 }
 
 auto Parser::parse_show_statement() -> std::unique_ptr<ASTNode> {
